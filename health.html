@@ -983,6 +983,14 @@ body::after {
 
   let growthAnimatedOnce = false;
   function renderGrowthChart() {
+    // Self-heal: if there are no topics at all, there's nothing left for any
+    // history to be attributed to. This also catches cloud sync pulling a
+    // stale (pre-fix) history back down after a reload — every render just
+    // re-asserts the correction, which re-pushes the empty state to the
+    // cloud too instead of the old data winning forever.
+    if (getTopics().length === 0 && getHistory().length > 0) {
+      storeSet('study:history', []);
+    }
     const series = buildCumulativeSeries();
     const wrap = document.getElementById('sdGrowthChartWrap');
     const heroNumEl = document.getElementById('sdGrowthHeroNum');
