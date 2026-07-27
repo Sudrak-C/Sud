@@ -228,17 +228,39 @@ body::after {
   letter-spacing: 0.10em; text-transform: uppercase;
   color: var(--text-tertiary);
 }
+.sd-select-wrap { position: relative; }
 .sd-select {
-  padding: 11px 14px;
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  width: 100%;
+  padding: 11px 34px 11px 14px;
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px;
   background: rgba(0,0,0,0.28);
   color: var(--text-primary);
   font-family: inherit; font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
 }
-.sd-select:focus { border-color: rgba(255,255,255,0.28); }
+.sd-select:hover { border-color: rgba(255,255,255,0.18); }
+.sd-select:focus { border-color: rgba(255,255,255,0.32); background: rgba(0,0,0,0.36); }
+.sd-select option { background: #111113; color: var(--text-primary); }
+.sd-select-wrap::after {
+  content: '';
+  position: absolute; right: 14px; top: 50%;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--text-tertiary);
+  border-bottom: 1.5px solid var(--text-tertiary);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+.sd-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+  font-family: inherit;
+}
 .sd-conf-picker { display: flex; gap: 6px; }
 .sd-conf-btn {
   width: 38px; height: 38px;
@@ -269,7 +291,7 @@ body::after {
 /* ===== My Topics ===== */
 .sd-topics-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .sd-topics-controls .gm-input { flex: 2; min-width: 160px; }
-.sd-topics-controls .sd-select { flex: 1; min-width: 140px; }
+.sd-topics-controls .sd-select-wrap { flex: 1; min-width: 140px; }
 .sd-topics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -277,6 +299,7 @@ body::after {
 }
 @media (max-width: 480px) { .sd-topics-grid { grid-template-columns: 1fr; } }
 .sd-topic-card {
+  position: relative;
   background: rgba(255,255,255,0.035);
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 12px;
@@ -285,10 +308,24 @@ body::after {
   transition: background 0.2s;
 }
 .sd-topic-card:hover { background: rgba(255,255,255,0.06); }
+.sd-topic-delete {
+  position: absolute; top: 10px; right: 10px;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+  color: var(--text-tertiary);
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.2s, color 0.2s, background 0.2s;
+}
+.sd-topic-delete:hover { opacity: 1; color: var(--danger); background: rgba(255,107,107,0.14); }
 .sd-topic-title {
   font-size: 14px; font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
+  padding-right: 22px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -402,9 +439,17 @@ body::after {
         <input id="sdLearnInput" class="gm-input" type="text" placeholder="What did you learn?" autocomplete="off" style="width:100%;">
       </div>
       <div class="sd-form-row">
-        <div class="sd-field">
+        <div class="sd-field" style="flex:1;">
+          <span class="sd-field-label">Description</span>
+          <textarea id="sdDescInput" class="gm-input sd-textarea" rows="3" placeholder="Describe exactly what you learned…"></textarea>
+        </div>
+      </div>
+      <div class="sd-form-row">
+        <div class="sd-field" style="min-width:170px;">
           <span class="sd-field-label">Subject</span>
-          <select id="sdSubjectSelect" class="sd-select"></select>
+          <div class="sd-select-wrap">
+            <select id="sdSubjectSelect" class="sd-select"></select>
+          </div>
         </div>
         <div class="sd-field">
           <span class="sd-field-label">Confidence</span>
@@ -433,7 +478,9 @@ body::after {
     <div class="gm-card">
       <div class="sd-topics-controls">
         <input id="sdSearchInput" class="gm-input" type="text" placeholder="Search topics…" autocomplete="off">
-        <select id="sdFilterSelect" class="sd-select"></select>
+        <div class="sd-select-wrap">
+          <select id="sdFilterSelect" class="sd-select"></select>
+        </div>
       </div>
       <div class="sd-topics-grid" id="sdTopicsGrid"></div>
       <div id="sdTopicsEmpty" class="empty-state">No topics logged yet — add one above.</div>
@@ -460,7 +507,7 @@ body::after {
   'use strict';
 
   const CONF_INTERVAL = { 1: 1, 2: 2, 3: 4, 4: 7, 5: 14 };
-  const SUBJECT_PRESETS = ['General', 'Math', 'Science', 'History', 'Language', 'Programming', 'Other'];
+  const SUBJECT_PRESETS = ['Math', 'Biology', 'Chemistry', 'Physics', 'English'];
 
   function storeGet(key) {
     try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
@@ -522,6 +569,7 @@ body::after {
 
   // ---------- form state ----------
   const learnInput = document.getElementById('sdLearnInput');
+  const descInput = document.getElementById('sdDescInput');
   const subjectSelect = document.getElementById('sdSubjectSelect');
   const newSubjectRow = document.getElementById('sdNewSubjectRow');
   const newSubjectInput = document.getElementById('sdNewSubjectInput');
@@ -573,13 +621,14 @@ body::after {
     const text = learnInput.value.trim();
     if (!text) { showAddStatus('Describe what you learned first.', true); return; }
     let subject = subjectSelect.value;
-    if (subject === '__new__') subject = newSubjectInput.value.trim() || 'General';
+    if (subject === '__new__') subject = newSubjectInput.value.trim() || 'Math';
+    const description = descInput.value.trim();
     const source = sourceInput.value.trim();
     const today = todayKey();
     const topics = getTopics();
     topics.push({
       id: 'sd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      text, subject, confidence: selectedConfidence, source,
+      text, description, subject, confidence: selectedConfidence, source,
       loggedAt: today,
       lastReviewed: today,
       nextReview: addDays(today, CONF_INTERVAL[selectedConfidence]),
@@ -588,6 +637,7 @@ body::after {
     saveTopics(topics);
     recordActivity(today);
     learnInput.value = '';
+    descInput.value = '';
     sourceInput.value = '';
     newSubjectInput.value = '';
     newSubjectRow.style.display = 'none';
@@ -598,6 +648,12 @@ body::after {
     renderAll();
   });
   learnInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBtn.click(); });
+
+  // ---------- delete topic ----------
+  function deleteTopic(id) {
+    saveTopics(getTopics().filter(t => t.id !== id));
+    renderAll();
+  }
 
   // ---------- mark reviewed ----------
   function markReviewed(id) {
@@ -699,10 +755,17 @@ body::after {
         confBarHtml(t.confidence) +
         '<div class="sd-topic-dates">Last reviewed: ' + formatDate(t.lastReviewed) + '</div>' +
         '<div class="sd-topic-dates ' + dateClass + '">Next review: ' + formatDate(t.nextReview) + '</div>' +
-        '<div class="sd-topic-notes">' + escapeHtml(t.text) +
+        '<div class="sd-topic-notes">' + (t.description ? escapeHtml(t.description) : '<em>No description added.</em>') +
           (t.source ? '<div class="sd-topic-source">Source: ' + escapeHtml(t.source) + '</div>' : '') +
           '<div class="sd-topic-source">Logged: ' + formatDate(t.loggedAt) + ' · Reviewed ' + (t.reviewCount || 0) + ' time' + ((t.reviewCount || 0) === 1 ? '' : 's') + '</div>' +
         '</div>';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'sd-topic-delete';
+      delBtn.setAttribute('aria-label', 'Delete topic');
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTopic(t.id); });
+      card.appendChild(delBtn);
       card.addEventListener('click', () => card.classList.toggle('sd-expanded'));
       gridEl.appendChild(card);
     });
