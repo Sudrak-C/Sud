@@ -906,12 +906,21 @@ body::after {
 
   // ---------- delete topic ----------
   function deleteTopic(id) {
-    saveTopics(getTopics().filter(t => t.id !== id));
-    // Also drop this topic's contribution to the growth chart/history —
-    // otherwise deleting a topic wouldn't change its cumulative total.
-    // (History entries recorded before this topicId tracking existed have no
-    // topicId and are left alone — there's no way to attribute them.)
-    storeSet('study:history', getHistory().filter(h => h.topicId !== id));
+    const remaining = getTopics().filter(t => t.id !== id);
+    saveTopics(remaining);
+    // Drop this topic's contribution to the growth chart/history — otherwise
+    // deleting a topic wouldn't change its cumulative total. History entries
+    // recorded before topicId tracking existed can't be attributed to a
+    // specific topic, so if this was the LAST topic, there's nothing left for
+    // any of that untagged history to belong to either — clear it all rather
+    // than leave a stale total. (Untagged history can only survive a delete
+    // while at least one topic still remains, since it's ambiguous which
+    // surviving topic it belongs to.)
+    if (remaining.length === 0) {
+      storeSet('study:history', []);
+    } else {
+      storeSet('study:history', getHistory().filter(h => h.topicId !== id));
+    }
     renderAll();
   }
 
