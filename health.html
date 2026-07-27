@@ -15,7 +15,6 @@
   --text-secondary: #B8B6B0;
   --text-tertiary: #76746E;
   --success: #6BE3A4;
-  --warning: #F2C063;
   --danger: #FF6B6B;
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -171,10 +170,10 @@ body::after {
   margin-top: 3px;
 }
 .sd-stat.sd-stat-accent {
-  background: rgba(242,192,99,0.10);
-  border-color: rgba(242,192,99,0.32);
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.16);
 }
-.sd-stat.sd-stat-accent .sd-stat-num { color: var(--warning); }
+.sd-stat.sd-stat-accent .sd-stat-num { color: var(--text-primary); }
 
 /* ===== Due for review ===== */
 .sd-due-card {
@@ -253,9 +252,9 @@ body::after {
 }
 .sd-conf-btn:hover { border-color: rgba(255,255,255,0.24); }
 .sd-conf-btn.sd-conf-selected {
-  background: rgba(242,192,99,0.18);
-  border-color: var(--warning);
-  color: var(--warning);
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.45);
+  color: var(--text-primary);
 }
 .sd-log-add-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
@@ -263,8 +262,8 @@ body::after {
 .sd-conf-bar { display: flex; gap: 3px; height: 5px; margin-bottom: 8px; width: 80px; }
 .sd-conf-seg { flex: 1; background: rgba(255,255,255,0.08); border-radius: 3px; }
 .sd-conf-seg.sd-conf-filled {
-  background: var(--warning);
-  box-shadow: 0 0 6px rgba(242,192,99,0.4);
+  background: var(--text-primary);
+  box-shadow: 0 0 6px rgba(255,255,255,0.3);
 }
 
 /* ===== My Topics ===== */
@@ -299,7 +298,7 @@ body::after {
 .sd-topic-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .sd-topic-dates { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
 .sd-topic-dates .sd-overdue { color: var(--danger); }
-.sd-topic-dates .sd-due-now { color: var(--warning); }
+.sd-topic-dates .sd-due-now { color: var(--text-primary); }
 .sd-topic-notes {
   display: none;
   margin-top: 10px; padding-top: 10px;
@@ -324,9 +323,9 @@ body::after {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .sd-tab-btn.sd-tab-active {
-  background: rgba(242,192,99,0.14);
-  border-color: rgba(242,192,99,0.4);
-  color: var(--warning);
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.28);
+  color: var(--text-primary);
 }
 .sd-sched-day {
   font-family: var(--font-mono);
