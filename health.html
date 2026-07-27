@@ -338,9 +338,19 @@ body::after {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  cursor: text;
 }
 .sd-topic-card.sd-expanded .sd-topic-title { -webkit-line-clamp: unset; }
+.sd-topic-title[contenteditable="true"] {
+  outline: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.28);
+  border-radius: 4px;
+}
 .sd-topic-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.sd-review-count {
+  font-size: 11px; font-weight: 800;
+  color: var(--text-primary);
+}
 .sd-topic-dates { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
 .sd-topic-dates .sd-overdue { color: var(--danger); }
 .sd-topic-dates .sd-due-now { color: var(--text-primary); }
@@ -498,6 +508,10 @@ body::after {
           <span class="sd-field-label">Source (optional)</span>
           <input id="sdSourceInput" class="gm-input" type="text" placeholder="Book, video, course…" autocomplete="off">
         </div>
+        <div class="sd-field" style="min-width:170px;">
+          <span class="sd-field-label">Remind me in (optional)</span>
+          <input id="sdRemindInput" class="gm-input" type="number" min="1" step="1" placeholder="Days, e.g. 3">
+        </div>
       </div>
       <div class="sd-form-row">
         <input id="sdLearnInput" class="gm-input" type="text" placeholder="What did you learn?" autocomplete="off" style="width:100%;">
@@ -622,6 +636,7 @@ body::after {
   const newSubjectRow = document.getElementById('sdNewSubjectRow');
   const newSubjectInput = document.getElementById('sdNewSubjectInput');
   const sourceInput = document.getElementById('sdSourceInput');
+  const remindInput = document.getElementById('sdRemindInput');
   const confPicker = document.getElementById('sdConfPicker');
   const addBtn = document.getElementById('sdAddBtn');
   const addStatus = document.getElementById('sdAddStatus');
@@ -674,14 +689,18 @@ body::after {
     if (subject === '__new__') subject = newSubjectInput.value.trim() || 'Math';
     const description = descInput.value.trim();
     const source = sourceInput.value.trim();
+    const remindDays = parseInt(remindInput.value, 10);
     const today = todayKey();
+    const nextReview = (remindDays > 0)
+      ? addDays(today, remindDays)
+      : addDays(today, CONF_INTERVAL[selectedConfidence]);
     const topics = getTopics();
     topics.push({
       id: 'sd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       text, description, subject, confidence: selectedConfidence, source,
       loggedAt: today,
       lastReviewed: today,
-      nextReview: addDays(today, CONF_INTERVAL[selectedConfidence]),
+      nextReview,
       reviewCount: 0
     });
     saveTopics(topics);
@@ -689,6 +708,7 @@ body::after {
     learnInput.value = '';
     descInput.value = '';
     sourceInput.value = '';
+    remindInput.value = '';
     newSubjectInput.value = '';
     newSubjectRow.style.display = 'none';
     selectedConfidence = 3;
@@ -818,6 +838,7 @@ body::after {
         '<div class="sd-topic-title">' + escapeHtml(t.text) + '</div>' +
         '<div class="sd-topic-meta-row">' +
           '<span class="sd-tag" style="' + tagStyle(t.subject) + '">' + escapeHtml(t.subject) + '</span>' +
+          '<span class="sd-review-count">' + (t.reviewCount || 0) + ' review' + ((t.reviewCount || 0) === 1 ? '' : 's') + '</span>' +
         '</div>' +
         confBarHtml(t.confidence) +
         '<div class="sd-topic-dates">Last reviewed: ' + formatDate(t.lastReviewed) + '</div>' +
@@ -839,8 +860,47 @@ body::after {
       delBtn.textContent = '×';
       delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTopic(t.id); });
       card.appendChild(delBtn);
+      const titleEl = card.querySelector('.sd-topic-title');
+      titleEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (titleEl.getAttribute('contenteditable') === 'true') return;
+        startTitleEdit(titleEl, card, t.id);
+      });
       card.addEventListener('click', () => card.classList.toggle('sd-expanded'));
       gridEl.appendChild(card);
+    });
+  }
+
+  function startTitleEdit(titleEl, card, topicId) {
+    card.classList.add('sd-expanded');
+    const original = titleEl.textContent;
+    titleEl.setAttribute('contenteditable', 'true');
+    titleEl.focus();
+    const range = document.createRange();
+    range.selectNodeContents(titleEl);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    function commit() {
+      titleEl.removeAttribute('contenteditable');
+      const next = titleEl.textContent.trim();
+      if (next && next !== original) {
+        const topics = getTopics();
+        const t = topics.find(x => x.id === topicId);
+        if (t) { t.text = next; saveTopics(topics); }
+      }
+      renderAll();
+    }
+    function cancel() {
+      titleEl.removeAttribute('contenteditable');
+      titleEl.textContent = original;
+    }
+    titleEl.addEventListener('blur', commit, { once: true });
+    titleEl.addEventListener('keydown', function onKey(e) {
+      if (e.key === 'Enter') { e.preventDefault(); titleEl.removeEventListener('keydown', onKey); titleEl.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); titleEl.removeEventListener('keydown', onKey); cancel(); }
     });
   }
   searchInput.addEventListener('input', renderMyTopics);
