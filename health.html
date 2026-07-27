@@ -3,36 +3,781 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#050506">
 <meta name="color-scheme" content="dark">
 <title>Study</title>
 <script src="topbar.js" defer></script>
 <style>
+:root {
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --success: #6BE3A4;
+  --warning: #F2C063;
+  --danger: #FF6B6B;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0;
-  background: #000000;
-  color: #FAFAFA;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  background: #050506;
+  color: var(--text-secondary);
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+body {
   min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  padding: max(28px, env(safe-area-inset-top)) 20px 60px;
 }
-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 20px 60px;
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 82% 14%, rgba(224, 118, 88, 0.16), transparent 45%),
+    radial-gradient(circle at 18% 90%, rgba(180, 180, 200, 0.06), transparent 50%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: -2;
+  animation: drift 36s ease-in-out infinite alternate;
 }
-h1 {
-  font-size: 22px;
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes drift {
+  0%   { transform: translate3d(0,0,0); }
+  100% { transform: translate3d(-22px, 14px, 0); }
+}
+
+.page { max-width: 1100px; margin: 0 auto; }
+
+.dash-title {
+  margin: 0 0 14px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.015em;
-  margin: 0;
+  letter-spacing: -0.025em;
+  background: linear-gradient(180deg, #FFFFFF 0%, #C7C4BC 120%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+@media (max-width: 480px) { .dash-title { font-size: 22px; } }
+
+.section { margin-top: 8px; margin-bottom: 22px; }
+.section-title {
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px;
+}
+.section-title::before {
+  content: ''; width: 18px; height: 1px;
+  background: var(--text-tertiary); opacity: 0.6;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent);
+}
+
+.gm-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.empty-state {
+  text-align: center;
+  font-size: 12px; font-style: italic;
+  color: var(--text-tertiary);
+  padding: 14px 0;
+}
+.gm-input {
+  flex: 1; min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.28);
+  color: var(--text-primary);
+  font-family: inherit; font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.gm-input::placeholder { color: var(--text-tertiary); }
+.gm-input:focus { border-color: rgba(255,255,255,0.28); background: rgba(0,0,0,0.36); }
+.gm-add {
+  padding: 11px 20px;
+  border: 0; border-radius: 12px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #E8E5DD 100%);
+  color: #0A0A0B;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 2px 8px rgba(0,0,0,0.35),
+    0 8px 22px rgba(0,0,0,0.25);
+  transition: transform 0.1s, filter 0.15s;
+}
+.gm-add:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.gm-add:active { transform: translateY(0); }
+.gm-status {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  min-height: 14px;
+  margin-top: 4px;
+}
+.gm-status.gm-status-error { color: var(--danger); }
+
+/* ===== Stats bar ===== */
+.sd-stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+.sd-stat {
+  flex: 1; min-width: 140px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.sd-stat-icon { font-size: 19px; }
+.sd-stat-body { display: flex; flex-direction: column; }
+.sd-stat-num {
+  font-family: var(--font-mono);
+  font-size: 21px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.sd-stat-label {
+  font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+}
+.sd-stat.sd-stat-accent {
+  background: rgba(242,192,99,0.10);
+  border-color: rgba(242,192,99,0.32);
+}
+.sd-stat.sd-stat-accent .sd-stat-num { color: var(--warning); }
+
+/* ===== Due for review ===== */
+.sd-due-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+.sd-due-info { flex: 1; min-width: 0; }
+.sd-due-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-due-meta {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-tertiary);
+}
+.sd-due-meta .sd-mono { font-family: var(--font-mono); }
+.sd-mark-btn {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 0; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(107,227,164,0.95), rgba(107,227,164,0.78));
+  color: #0A0A0B;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.sd-mark-btn:hover { filter: brightness(1.08); }
+.sd-mark-btn:active { transform: scale(0.96); }
+
+/* ===== Subject tag pill ===== */
+.sd-tag {
+  display: inline-block;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ===== Log new learning form ===== */
+.sd-form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.sd-form-row:last-child { margin-bottom: 0; }
+.sd-field { display: flex; flex-direction: column; gap: 6px; }
+.sd-field-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.sd-select {
+  padding: 11px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.28);
+  color: var(--text-primary);
+  font-family: inherit; font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.sd-select:focus { border-color: rgba(255,255,255,0.28); }
+.sd-conf-picker { display: flex; gap: 6px; }
+.sd-conf-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.28);
+  color: var(--text-secondary);
+  font-family: var(--font-mono); font-weight: 700; font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sd-conf-btn:hover { border-color: rgba(255,255,255,0.24); }
+.sd-conf-btn.sd-conf-selected {
+  background: rgba(242,192,99,0.18);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.sd-log-add-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+/* ===== Confidence mini bar (topic grid) ===== */
+.sd-conf-bar { display: flex; gap: 3px; height: 5px; margin-bottom: 8px; width: 80px; }
+.sd-conf-seg { flex: 1; background: rgba(255,255,255,0.08); border-radius: 3px; }
+.sd-conf-seg.sd-conf-filled {
+  background: var(--warning);
+  box-shadow: 0 0 6px rgba(242,192,99,0.4);
+}
+
+/* ===== My Topics ===== */
+.sd-topics-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.sd-topics-controls .gm-input { flex: 2; min-width: 160px; }
+.sd-topics-controls .sd-select { flex: 1; min-width: 140px; }
+.sd-topics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 480px) { .sd-topics-grid { grid-template-columns: 1fr; } }
+.sd-topic-card {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.sd-topic-card:hover { background: rgba(255,255,255,0.06); }
+.sd-topic-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sd-topic-card.sd-expanded .sd-topic-title { -webkit-line-clamp: unset; }
+.sd-topic-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.sd-topic-dates { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
+.sd-topic-dates .sd-overdue { color: var(--danger); }
+.sd-topic-dates .sd-due-now { color: var(--warning); }
+.sd-topic-notes {
+  display: none;
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px; color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+.sd-topic-card.sd-expanded .sd-topic-notes { display: block; }
+.sd-topic-source { margin-top: 6px; font-size: 11px; color: var(--text-tertiary); }
+
+/* ===== Revision schedule ===== */
+.sd-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.sd-tab-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-tertiary);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.sd-tab-btn.sd-tab-active {
+  background: rgba(242,192,99,0.14);
+  border-color: rgba(242,192,99,0.4);
+  color: var(--warning);
+}
+.sd-sched-day {
+  font-family: var(--font-mono);
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 14px 0 8px;
+}
+.sd-sched-day:first-child { margin-top: 0; }
+.sd-sched-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+}
+.sd-sched-title {
+  flex: 1; font-size: 13px; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-sched-note {
+  font-size: 10.5px; color: var(--text-tertiary);
+  margin-top: 6px;
+}
+
+@media (max-width: 480px) {
+  body { padding: max(20px, env(safe-area-inset-top)) 14px 50px; }
+  .gm-card { padding: 16px; }
 }
 </style>
 </head>
 <body>
-<main>
-  <h1>Study</h1>
-</main>
+<div class="page">
+
+  <h1 class="dash-title">Study</h1>
+
+  <div class="sd-stats-row">
+    <div class="sd-stat sd-stat-accent" id="sdStatStreak">
+      <span class="sd-stat-icon">🔥</span>
+      <div class="sd-stat-body">
+        <span class="sd-stat-num" id="sdStreakNum">0</span>
+        <span class="sd-stat-label">Day streak</span>
+      </div>
+    </div>
+    <div class="sd-stat">
+      <span class="sd-stat-icon">📌</span>
+      <div class="sd-stat-body">
+        <span class="sd-stat-num" id="sdDueNum">0</span>
+        <span class="sd-stat-label">Due today</span>
+      </div>
+    </div>
+    <div class="sd-stat">
+      <span class="sd-stat-icon">📖</span>
+      <div class="sd-stat-body">
+        <span class="sd-stat-num" id="sdTotalNum">0</span>
+        <span class="sd-stat-label">Topics logged</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Due for Review Today</div>
+    <div class="gm-card">
+      <div id="sdDueList"></div>
+      <div id="sdDueEmpty" class="empty-state">Nothing due for review today</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Log New Learning</div>
+    <div class="gm-card">
+      <div class="sd-form-row">
+        <input id="sdLearnInput" class="gm-input" type="text" placeholder="What did you learn?" autocomplete="off" style="width:100%;">
+      </div>
+      <div class="sd-form-row">
+        <div class="sd-field">
+          <span class="sd-field-label">Subject</span>
+          <select id="sdSubjectSelect" class="sd-select"></select>
+        </div>
+        <div class="sd-field">
+          <span class="sd-field-label">Confidence</span>
+          <div class="sd-conf-picker" id="sdConfPicker"></div>
+        </div>
+        <div class="sd-field" style="flex:1; min-width:160px;">
+          <span class="sd-field-label">Source (optional)</span>
+          <input id="sdSourceInput" class="gm-input" type="text" placeholder="Book, video, course…" autocomplete="off">
+        </div>
+      </div>
+      <div class="sd-form-row" id="sdNewSubjectRow" style="display:none;">
+        <div class="sd-field" style="flex:1;">
+          <span class="sd-field-label">New subject name</span>
+          <input id="sdNewSubjectInput" class="gm-input" type="text" placeholder="e.g. Biology" autocomplete="off">
+        </div>
+      </div>
+      <div class="sd-log-add-row">
+        <button type="button" id="sdAddBtn" class="gm-add">+ Add</button>
+        <div class="gm-status" id="sdAddStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">My Topics</div>
+    <div class="gm-card">
+      <div class="sd-topics-controls">
+        <input id="sdSearchInput" class="gm-input" type="text" placeholder="Search topics…" autocomplete="off">
+        <select id="sdFilterSelect" class="sd-select"></select>
+      </div>
+      <div class="sd-topics-grid" id="sdTopicsGrid"></div>
+      <div id="sdTopicsEmpty" class="empty-state">No topics logged yet — add one above.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Revision Schedule</div>
+    <div class="gm-card">
+      <div class="sd-tabs">
+        <button type="button" class="sd-tab-btn sd-tab-active" id="sdTabToday" data-tab="today">Today</button>
+        <button type="button" class="sd-tab-btn" id="sdTabWeek" data-tab="week">This Week</button>
+      </div>
+      <div id="sdScheduleList"></div>
+      <div id="sdScheduleEmpty" class="empty-state">No upcoming reviews scheduled</div>
+      <div class="sd-sched-note">Full calendar view coming soon — this is a lightweight preview.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const CONF_INTERVAL = { 1: 1, 2: 2, 3: 4, 4: 7, 5: 14 };
+  const SUBJECT_PRESETS = ['General', 'Math', 'Science', 'History', 'Language', 'Programming', 'Other'];
+
+  function storeGet(key) {
+    try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
+  }
+  function storeSet(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function dateToKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function todayKey() { return dateToKey(new Date()); }
+  function addDays(key, n) {
+    const parts = key.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() + n);
+    return dateToKey(d);
+  }
+  function formatDate(key) {
+    const parts = key.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const wk = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+    const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    return wk + ', ' + mo + ' ' + d.getDate();
+  }
+
+  function getTopics() { const t = storeGet('study:topics'); return Array.isArray(t) ? t : []; }
+  function saveTopics(list) { storeSet('study:topics', list); }
+  function getActivity() { const a = storeGet('study:activity'); return Array.isArray(a) ? a : []; }
+  function recordActivity(key) {
+    const a = getActivity();
+    if (a.indexOf(key) === -1) { a.push(key); storeSet('study:activity', a); }
+  }
+
+  function computeStreak() {
+    const activity = new Set(getActivity());
+    let cursor = new Date();
+    if (!activity.has(dateToKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+    let count = 0;
+    while (activity.has(dateToKey(cursor))) {
+      count++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }
+
+  function hashHue(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+    return h;
+  }
+  function tagStyle(subject) {
+    const hue = hashHue(subject || 'General');
+    return 'background:hsla(' + hue + ',70%,55%,0.16); color:hsl(' + hue + ',70%,72%); border:1px solid hsla(' + hue + ',70%,55%,0.32);';
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- form state ----------
+  const learnInput = document.getElementById('sdLearnInput');
+  const subjectSelect = document.getElementById('sdSubjectSelect');
+  const newSubjectRow = document.getElementById('sdNewSubjectRow');
+  const newSubjectInput = document.getElementById('sdNewSubjectInput');
+  const sourceInput = document.getElementById('sdSourceInput');
+  const confPicker = document.getElementById('sdConfPicker');
+  const addBtn = document.getElementById('sdAddBtn');
+  const addStatus = document.getElementById('sdAddStatus');
+  let selectedConfidence = 3;
+
+  function allKnownSubjects() {
+    const used = getTopics().map(t => t.subject).filter(Boolean);
+    return Array.from(new Set([...SUBJECT_PRESETS, ...used])).sort((a, b) => a.localeCompare(b));
+  }
+  function usedSubjects() {
+    return Array.from(new Set(getTopics().map(t => t.subject).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }
+
+  function populateSubjectSelect() {
+    const prev = subjectSelect.value;
+    subjectSelect.innerHTML = allKnownSubjects().map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>').join('')
+      + '<option value="__new__">+ Add new subject…</option>';
+    if (prev && [...subjectSelect.options].some(o => o.value === prev)) subjectSelect.value = prev;
+  }
+  subjectSelect.addEventListener('change', () => {
+    newSubjectRow.style.display = subjectSelect.value === '__new__' ? 'flex' : 'none';
+  });
+
+  function buildConfPicker() {
+    confPicker.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sd-conf-btn' + (i === selectedConfidence ? ' sd-conf-selected' : '');
+      btn.textContent = String(i);
+      btn.addEventListener('click', () => { selectedConfidence = i; buildConfPicker(); });
+      confPicker.appendChild(btn);
+    }
+  }
+  buildConfPicker();
+
+  function showAddStatus(msg, isError) {
+    addStatus.textContent = msg;
+    addStatus.classList.toggle('gm-status-error', !!isError);
+    clearTimeout(addStatus._t);
+    addStatus._t = setTimeout(() => { addStatus.textContent = ''; addStatus.classList.remove('gm-status-error'); }, 3000);
+  }
+
+  addBtn.addEventListener('click', () => {
+    const text = learnInput.value.trim();
+    if (!text) { showAddStatus('Describe what you learned first.', true); return; }
+    let subject = subjectSelect.value;
+    if (subject === '__new__') subject = newSubjectInput.value.trim() || 'General';
+    const source = sourceInput.value.trim();
+    const today = todayKey();
+    const topics = getTopics();
+    topics.push({
+      id: 'sd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      text, subject, confidence: selectedConfidence, source,
+      loggedAt: today,
+      lastReviewed: today,
+      nextReview: addDays(today, CONF_INTERVAL[selectedConfidence]),
+      reviewCount: 0
+    });
+    saveTopics(topics);
+    recordActivity(today);
+    learnInput.value = '';
+    sourceInput.value = '';
+    newSubjectInput.value = '';
+    newSubjectRow.style.display = 'none';
+    selectedConfidence = 3;
+    buildConfPicker();
+    populateSubjectSelect();
+    subjectSelect.value = subject;
+    renderAll();
+  });
+  learnInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBtn.click(); });
+
+  // ---------- mark reviewed ----------
+  function markReviewed(id) {
+    const topics = getTopics();
+    const t = topics.find(x => x.id === id);
+    if (!t) return;
+    t.confidence = Math.min(5, t.confidence + 1);
+    const today = todayKey();
+    t.lastReviewed = today;
+    t.nextReview = addDays(today, CONF_INTERVAL[t.confidence]);
+    t.reviewCount = (t.reviewCount || 0) + 1;
+    saveTopics(topics);
+    recordActivity(today);
+    renderAll();
+  }
+
+  // ---------- stats ----------
+  function renderStats() {
+    const topics = getTopics();
+    const today = todayKey();
+    document.getElementById('sdStreakNum').textContent = computeStreak();
+    document.getElementById('sdDueNum').textContent = topics.filter(t => t.nextReview <= today).length;
+    document.getElementById('sdTotalNum').textContent = topics.length;
+  }
+
+  // ---------- due today ----------
+  function renderDueToday() {
+    const today = todayKey();
+    const due = getTopics().filter(t => t.nextReview <= today).sort((a, b) => a.nextReview.localeCompare(b.nextReview));
+    const listEl = document.getElementById('sdDueList');
+    const emptyEl = document.getElementById('sdDueEmpty');
+    listEl.innerHTML = '';
+    emptyEl.style.display = due.length === 0 ? 'block' : 'none';
+    due.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'sd-due-card';
+      card.innerHTML =
+        '<div class="sd-due-info">' +
+          '<div class="sd-due-title">' + escapeHtml(t.text) + '</div>' +
+          '<div class="sd-due-meta">' +
+            '<span class="sd-tag" style="' + tagStyle(t.subject) + '">' + escapeHtml(t.subject) + '</span>' +
+            '<span class="sd-mono">Last studied: ' + formatDate(t.lastReviewed) + '</span>' +
+            '<span class="sd-mono">Confidence: ' + t.confidence + '/5</span>' +
+          '</div>' +
+        '</div>';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sd-mark-btn';
+      btn.textContent = '✓ Mark as Reviewed';
+      btn.addEventListener('click', () => markReviewed(t.id));
+      card.appendChild(btn);
+      listEl.appendChild(card);
+    });
+  }
+
+  // ---------- my topics ----------
+  const searchInput = document.getElementById('sdSearchInput');
+  const filterSelect = document.getElementById('sdFilterSelect');
+  const gridEl = document.getElementById('sdTopicsGrid');
+  const topicsEmptyEl = document.getElementById('sdTopicsEmpty');
+
+  function populateFilterSelect() {
+    const prev = filterSelect.value;
+    filterSelect.innerHTML = '<option value="all">All subjects</option>' +
+      usedSubjects().map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>').join('');
+    if (prev && [...filterSelect.options].some(o => o.value === prev)) filterSelect.value = prev;
+  }
+
+  function confBarHtml(n) {
+    let out = '<div class="sd-conf-bar">';
+    for (let i = 1; i <= 5; i++) out += '<div class="sd-conf-seg' + (i <= n ? ' sd-conf-filled' : '') + '"></div>';
+    return out + '</div>';
+  }
+
+  function renderMyTopics() {
+    const q = searchInput.value.trim().toLowerCase();
+    const subjectFilter = filterSelect.value;
+    const today = todayKey();
+    const topics = getTopics().filter(t => {
+      if (subjectFilter !== 'all' && t.subject !== subjectFilter) return false;
+      if (q && t.text.toLowerCase().indexOf(q) === -1 && t.subject.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    }).sort((a, b) => a.nextReview.localeCompare(b.nextReview));
+
+    gridEl.innerHTML = '';
+    topicsEmptyEl.style.display = topics.length === 0 ? 'block' : 'none';
+
+    topics.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'sd-topic-card';
+      const overdue = t.nextReview < today;
+      const dueNow = t.nextReview === today;
+      const dateClass = overdue ? 'sd-overdue' : (dueNow ? 'sd-due-now' : '');
+      card.innerHTML =
+        '<div class="sd-topic-title">' + escapeHtml(t.text) + '</div>' +
+        '<div class="sd-topic-meta-row">' +
+          '<span class="sd-tag" style="' + tagStyle(t.subject) + '">' + escapeHtml(t.subject) + '</span>' +
+        '</div>' +
+        confBarHtml(t.confidence) +
+        '<div class="sd-topic-dates">Last reviewed: ' + formatDate(t.lastReviewed) + '</div>' +
+        '<div class="sd-topic-dates ' + dateClass + '">Next review: ' + formatDate(t.nextReview) + '</div>' +
+        '<div class="sd-topic-notes">' + escapeHtml(t.text) +
+          (t.source ? '<div class="sd-topic-source">Source: ' + escapeHtml(t.source) + '</div>' : '') +
+          '<div class="sd-topic-source">Logged: ' + formatDate(t.loggedAt) + ' · Reviewed ' + (t.reviewCount || 0) + ' time' + ((t.reviewCount || 0) === 1 ? '' : 's') + '</div>' +
+        '</div>';
+      card.addEventListener('click', () => card.classList.toggle('sd-expanded'));
+      gridEl.appendChild(card);
+    });
+  }
+  searchInput.addEventListener('input', renderMyTopics);
+  filterSelect.addEventListener('change', renderMyTopics);
+
+  // ---------- revision schedule ----------
+  let scheduleTab = 'today';
+  const tabTodayBtn = document.getElementById('sdTabToday');
+  const tabWeekBtn = document.getElementById('sdTabWeek');
+  function setScheduleTab(tab) {
+    scheduleTab = tab;
+    tabTodayBtn.classList.toggle('sd-tab-active', tab === 'today');
+    tabWeekBtn.classList.toggle('sd-tab-active', tab === 'week');
+    renderSchedule();
+  }
+  tabTodayBtn.addEventListener('click', () => setScheduleTab('today'));
+  tabWeekBtn.addEventListener('click', () => setScheduleTab('week'));
+
+  function renderSchedule() {
+    const today = todayKey();
+    const listEl = document.getElementById('sdScheduleList');
+    const emptyEl = document.getElementById('sdScheduleEmpty');
+    const topics = getTopics();
+    listEl.innerHTML = '';
+
+    if (scheduleTab === 'today') {
+      const due = topics.filter(t => t.nextReview <= today).sort((a, b) => a.subject.localeCompare(b.subject));
+      emptyEl.style.display = due.length === 0 ? 'block' : 'none';
+      due.forEach(t => listEl.appendChild(buildScheduleItem(t)));
+      return;
+    }
+
+    // week view: group by date for the next 7 days (including today)
+    const days = [];
+    for (let i = 0; i < 7; i++) days.push(addDays(today, i));
+    let anyItems = false;
+    days.forEach(dayKey => {
+      const dayTopics = topics.filter(t => t.nextReview === dayKey || (dayKey === today && t.nextReview < today));
+      if (dayTopics.length === 0) return;
+      anyItems = true;
+      const header = document.createElement('div');
+      header.className = 'sd-sched-day';
+      header.textContent = dayKey === today ? 'Today — ' + formatDate(dayKey) : formatDate(dayKey);
+      listEl.appendChild(header);
+      dayTopics.forEach(t => listEl.appendChild(buildScheduleItem(t)));
+    });
+    emptyEl.style.display = anyItems ? 'none' : 'block';
+  }
+
+  function buildScheduleItem(t) {
+    const hue = hashHue(t.subject || 'General');
+    const row = document.createElement('div');
+    row.className = 'sd-sched-item';
+    row.style.borderLeftColor = 'hsl(' + hue + ',70%,55%)';
+    row.innerHTML =
+      '<span class="sd-sched-title">' + escapeHtml(t.text) + '</span>' +
+      '<span class="sd-tag" style="' + tagStyle(t.subject) + '">' + escapeHtml(t.subject) + '</span>';
+    return row;
+  }
+
+  // ---------- boot ----------
+  function renderAll() {
+    renderStats();
+    renderDueToday();
+    populateFilterSelect();
+    renderMyTopics();
+    renderSchedule();
+  }
+
+  populateSubjectSelect();
+  renderAll();
+
+  window.addEventListener('storage', renderAll);
+})();
+</script>
 </body>
 </html>
