@@ -183,6 +183,125 @@ body::after {
 .sd-stat.sd-stat-accent:hover { background: rgba(255,255,255,0.11); border-color: rgba(255,255,255,0.24); }
 .sd-stat.sd-stat-accent .sd-stat-num { color: var(--text-primary); }
 
+/* ===== Progress: growth chart + mastery ring ===== */
+.sd-progress-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.sd-growth-card { flex: 2; min-width: 240px; }
+.sd-growth-hero { display: flex; flex-direction: column; margin-bottom: 10px; }
+.sd-growth-hero-num {
+  font-family: var(--font-mono);
+  font-size: 40px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.sd-growth-hero-label {
+  margin-top: 4px;
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.sd-growth-chart-wrap { position: relative; width: 100%; height: 140px; }
+.sd-growth-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.sd-growth-area { stroke: none; }
+.sd-growth-line {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.sd-growth-dot { fill: var(--text-primary); }
+.sd-growth-crosshair {
+  stroke: rgba(255,255,255,0.25);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transition: opacity 0.1s;
+  pointer-events: none;
+}
+.sd-growth-hover-dot {
+  fill: var(--text-primary);
+  stroke: #050506;
+  stroke-width: 2;
+  opacity: 0;
+  transition: opacity 0.1s;
+  pointer-events: none;
+}
+.sd-growth-tooltip {
+  position: absolute;
+  display: none;
+  padding: 5px 9px;
+  background: rgba(10,10,11,0.92);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+.sd-growth-axis-labels {
+  display: flex; justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px; color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.sd-growth-empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%;
+  text-align: center;
+  font-size: 12px; font-style: italic;
+  color: var(--text-tertiary);
+}
+.sd-mastery-wrap { flex: 1; min-width: 150px; display: flex; justify-content: center; }
+.sd-mastery-ring { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+.sd-mastery-ring svg { width: 100%; height: 100%; display: block; }
+.sd-mastery-track { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 8; }
+.sd-mastery-fill {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 60px 60px;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sd-mastery-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+.sd-mastery-percent {
+  font-size: 28px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.sd-mastery-label {
+  margin-top: 4px;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.sd-mastery-sub {
+  margin-top: 4px;
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+@media (max-width: 480px) {
+  .sd-growth-hero-num { font-size: 32px; }
+  .sd-growth-chart-wrap { height: 110px; }
+  .sd-mastery-ring { width: 110px; height: 110px; }
+  .sd-mastery-percent { font-size: 22px; }
+}
+
 /* ===== Due for review ===== */
 .sd-due-card {
   display: flex; align-items: center; gap: 12px;
@@ -483,6 +602,40 @@ body::after {
   </div>
 
   <div class="section">
+    <div class="section-title">Progress</div>
+    <div class="gm-card">
+      <div class="sd-progress-row">
+        <div class="sd-growth-card">
+          <div class="sd-growth-hero">
+            <span class="sd-growth-hero-num" id="sdGrowthHeroNum">0</span>
+            <span class="sd-growth-hero-label">Total Study Actions</span>
+          </div>
+          <div class="sd-growth-chart-wrap" id="sdGrowthChartWrap"></div>
+        </div>
+        <div class="sd-mastery-wrap">
+          <div class="sd-mastery-ring" id="sdMasteryRing">
+            <svg viewBox="0 0 120 120">
+              <defs>
+                <filter id="sdMasteryGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.4" result="b" />
+                  <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <circle class="sd-mastery-track" cx="60" cy="60" r="52" />
+              <circle class="sd-mastery-fill" cx="60" cy="60" r="52" id="sdMasteryFill" filter="url(#sdMasteryGlow)" />
+            </svg>
+            <div class="sd-mastery-overlay">
+              <div class="sd-mastery-percent" id="sdMasteryPercent">0%</div>
+              <div class="sd-mastery-label">Overall Mastery</div>
+              <div class="sd-mastery-sub" id="sdMasterySub">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-title">Due for Review Today</div>
     <div class="gm-card">
       <div id="sdDueList"></div>
@@ -603,6 +756,16 @@ body::after {
     if (a.indexOf(key) === -1) { a.push(key); storeSet('study:activity', a); }
   }
 
+  // Timestamped log of every log/review action — separate from getActivity()
+  // (which only tracks which days had *any* activity, for the streak count).
+  // This is what lets the growth chart plot cumulative totals over time.
+  function getHistory() { const h = storeGet('study:history'); return Array.isArray(h) ? h : []; }
+  function recordHistory(type) {
+    const h = getHistory();
+    h.push({ date: todayKey(), type });
+    storeSet('study:history', h);
+  }
+
   function computeStreak() {
     const activity = new Set(getActivity());
     let cursor = new Date();
@@ -613,6 +776,26 @@ body::after {
       cursor.setDate(cursor.getDate() - 1);
     }
     return count;
+  }
+
+  // Combined (log + review) running total, one point per day from the first
+  // ever action to today — flat on inactive days, stepping up on active ones.
+  function buildCumulativeSeries() {
+    const history = getHistory();
+    if (history.length === 0) return [];
+    const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+    const perDay = {};
+    sorted.forEach(e => { perDay[e.date] = (perDay[e.date] || 0) + 1; });
+    const today = todayKey();
+    const series = [];
+    let cursorKey = sorted[0].date;
+    let cumulative = 0;
+    while (cursorKey <= today) {
+      cumulative += (perDay[cursorKey] || 0);
+      series.push({ date: cursorKey, value: cumulative });
+      cursorKey = addDays(cursorKey, 1);
+    }
+    return series;
   }
 
   function hashHue(str) {
@@ -705,6 +888,7 @@ body::after {
     });
     saveTopics(topics);
     recordActivity(today);
+    recordHistory('log');
     learnInput.value = '';
     descInput.value = '';
     sourceInput.value = '';
@@ -737,6 +921,7 @@ body::after {
     t.reviewCount = (t.reviewCount || 0) + 1;
     saveTopics(topics);
     recordActivity(today);
+    recordHistory('review');
     renderAll();
   }
 
@@ -754,6 +939,7 @@ body::after {
     t.reviewCount = (t.reviewCount || 0) + 1;
     saveTopics(topics);
     recordActivity(today);
+    recordHistory('review');
     renderAll();
   }
 
@@ -764,6 +950,150 @@ body::after {
     document.getElementById('sdStreakNum').textContent = computeStreak();
     document.getElementById('sdDueNum').textContent = topics.filter(t => t.nextReview <= today).length;
     document.getElementById('sdTotalNum').textContent = topics.length;
+  }
+
+  // ---------- progress: growth chart ----------
+  function animateCountUp(el, target, duration) {
+    const startTime = performance.now();
+    function step(now) {
+      const progress = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(target * eased);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(step);
+  }
+
+  let growthAnimatedOnce = false;
+  function renderGrowthChart() {
+    const series = buildCumulativeSeries();
+    const wrap = document.getElementById('sdGrowthChartWrap');
+    const heroNumEl = document.getElementById('sdGrowthHeroNum');
+    const total = series.length ? series[series.length - 1].value : 0;
+
+    if (!growthAnimatedOnce) animateCountUp(heroNumEl, total, 700);
+    else heroNumEl.textContent = total;
+
+    if (series.length === 0) {
+      wrap.innerHTML = '<div class="sd-growth-empty">Log or review something to start your growth chart.</div>';
+      growthAnimatedOnce = true;
+      return;
+    }
+
+    const W = 600, H = 140, PAD_TOP = 14, PAD_BOTTOM = 6;
+    const chartH = H - PAD_TOP - PAD_BOTTOM;
+    const n = series.length;
+    const maxVal = series[n - 1].value || 1;
+    const baselineY = PAD_TOP + chartH;
+    function xAt(i) { return n === 1 ? 0 : (i / (n - 1)) * W; }
+    function yAt(v) { return PAD_TOP + (1 - v / maxVal) * chartH; }
+
+    let pointsAttr = '';
+    let areaPath = 'M 0 ' + baselineY + ' ';
+    series.forEach((d, i) => {
+      const x = xAt(i), y = yAt(d.value);
+      pointsAttr += x + ',' + y + ' ';
+      areaPath += 'L ' + x + ' ' + y + ' ';
+    });
+    areaPath += 'L ' + (n === 1 ? W : xAt(n - 1)) + ' ' + baselineY + ' Z';
+    const lastX = xAt(n - 1), lastY = yAt(series[n - 1].value);
+
+    wrap.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="sd-growth-svg" id="sdGrowthSvg">' +
+        '<defs><linearGradient id="sdGrowthAreaGrad" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.16"/>' +
+          '<stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>' +
+        '</linearGradient></defs>' +
+        '<path class="sd-growth-area" d="' + areaPath + '" fill="url(#sdGrowthAreaGrad)"></path>' +
+        '<polyline class="sd-growth-line" id="sdGrowthLine" points="' + pointsAttr.trim() + '"></polyline>' +
+        '<circle class="sd-growth-dot" cx="' + lastX + '" cy="' + lastY + '" r="4"></circle>' +
+        '<line class="sd-growth-crosshair" id="sdGrowthCrosshair" x1="0" y1="' + PAD_TOP + '" x2="0" y2="' + baselineY + '"></line>' +
+        '<circle class="sd-growth-hover-dot" id="sdGrowthHoverDot" r="4"></circle>' +
+      '</svg>' +
+      '<div class="sd-growth-tooltip" id="sdGrowthTooltip"></div>' +
+      '<div class="sd-growth-axis-labels">' +
+        '<span>' + formatDate(series[0].date) + '</span>' +
+        '<span>' + formatDate(series[n - 1].date) + '</span>' +
+      '</div>';
+
+    const svg = document.getElementById('sdGrowthSvg');
+    const line = document.getElementById('sdGrowthLine');
+    const crosshair = document.getElementById('sdGrowthCrosshair');
+    const hoverDot = document.getElementById('sdGrowthHoverDot');
+    const tooltip = document.getElementById('sdGrowthTooltip');
+
+    if (!growthAnimatedOnce) {
+      const len = line.getTotalLength();
+      line.style.strokeDasharray = String(len);
+      line.style.strokeDashoffset = String(len);
+      line.getBoundingClientRect();
+      line.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+      requestAnimationFrame(() => { line.style.strokeDashoffset = '0'; });
+    }
+
+    function svgPointFrom(clientX, clientY) {
+      const pt = svg.createSVGPoint();
+      pt.x = clientX; pt.y = clientY;
+      return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+    function nearestIndex(px) {
+      if (n === 1) return 0;
+      const step = W / (n - 1);
+      let idx = Math.round(px / step);
+      if (idx < 0) idx = 0;
+      if (idx > n - 1) idx = n - 1;
+      return idx;
+    }
+    function showHover(clientX, clientY) {
+      const pt = svgPointFrom(clientX, clientY);
+      const idx = nearestIndex(pt.x);
+      const d = series[idx];
+      const x = xAt(idx), y = yAt(d.value);
+      crosshair.setAttribute('x1', x); crosshair.setAttribute('x2', x);
+      crosshair.style.opacity = '1';
+      hoverDot.setAttribute('cx', x); hoverDot.setAttribute('cy', y);
+      hoverDot.style.opacity = '1';
+      const wrapRect = wrap.getBoundingClientRect();
+      tooltip.textContent = formatDate(d.date) + ' · ' + d.value;
+      tooltip.style.display = 'block';
+      let tx = clientX - wrapRect.left + 12;
+      let ty = clientY - wrapRect.top - 34;
+      tx = Math.max(4, Math.min(tx, wrapRect.width - 100));
+      ty = Math.max(0, ty);
+      tooltip.style.left = tx + 'px';
+      tooltip.style.top = ty + 'px';
+    }
+    function hideHover() {
+      crosshair.style.opacity = '0';
+      hoverDot.style.opacity = '0';
+      tooltip.style.display = 'none';
+    }
+    svg.addEventListener('pointermove', (e) => showHover(e.clientX, e.clientY));
+    svg.addEventListener('pointerdown', (e) => showHover(e.clientX, e.clientY));
+    svg.addEventListener('pointerleave', hideHover);
+
+    growthAnimatedOnce = true;
+  }
+
+  // ---------- progress: mastery ring ----------
+  function renderMasteryRing() {
+    const topics = getTopics();
+    const avg = topics.length ? topics.reduce((s, t) => s + t.confidence, 0) / topics.length : 0;
+    const percent = (avg / 5) * 100;
+    const C = 2 * Math.PI * 52;
+    const fillEl = document.getElementById('sdMasteryFill');
+    fillEl.setAttribute('stroke-dasharray', String(C));
+    fillEl.setAttribute('stroke-dashoffset', String(C * (1 - percent / 100)));
+    document.getElementById('sdMasteryPercent').textContent = Math.round(percent) + '%';
+    const subEl = document.getElementById('sdMasterySub');
+    if (topics.length === 0) {
+      subEl.textContent = 'Log a topic to start tracking mastery.';
+    } else {
+      subEl.innerHTML = avg.toFixed(1) + '/5 avg<br>' + topics.length + ' topic' + (topics.length === 1 ? '' : 's');
+    }
+    document.getElementById('sdMasteryRing').title =
+      avg.toFixed(2) + '/5 average confidence across ' + topics.length + ' topic' + (topics.length === 1 ? '' : 's');
   }
 
   // ---------- due today ----------
@@ -964,6 +1294,8 @@ body::after {
   // ---------- boot ----------
   function renderAll() {
     renderStats();
+    renderGrowthChart();
+    renderMasteryRing();
     renderDueToday();
     populateFilterSelect();
     renderMyTopics();
@@ -981,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof initCloudSync !== 'function') return;
   initCloudSync({
     appKey: 'study',
-    syncedKeys: ['study:topics', 'study:activity'],
+    syncedKeys: ['study:topics', 'study:activity', 'study:history'],
     onApplied: function () { window.dispatchEvent(new Event('storage')); }
   });
 });
