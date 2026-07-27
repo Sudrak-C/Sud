@@ -760,9 +760,9 @@ body::after {
   // (which only tracks which days had *any* activity, for the streak count).
   // This is what lets the growth chart plot cumulative totals over time.
   function getHistory() { const h = storeGet('study:history'); return Array.isArray(h) ? h : []; }
-  function recordHistory(type) {
+  function recordHistory(type, topicId) {
     const h = getHistory();
-    h.push({ date: todayKey(), type });
+    h.push({ date: todayKey(), type, topicId });
     storeSet('study:history', h);
   }
 
@@ -878,17 +878,18 @@ body::after {
       ? addDays(today, remindDays)
       : addDays(today, CONF_INTERVAL[selectedConfidence]);
     const topics = getTopics();
-    topics.push({
+    const newTopic = {
       id: 'sd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       text, description, subject, confidence: selectedConfidence, source,
       loggedAt: today,
       lastReviewed: today,
       nextReview,
       reviewCount: 0
-    });
+    };
+    topics.push(newTopic);
     saveTopics(topics);
     recordActivity(today);
-    recordHistory('log');
+    recordHistory('log', newTopic.id);
     learnInput.value = '';
     descInput.value = '';
     sourceInput.value = '';
@@ -906,6 +907,11 @@ body::after {
   // ---------- delete topic ----------
   function deleteTopic(id) {
     saveTopics(getTopics().filter(t => t.id !== id));
+    // Also drop this topic's contribution to the growth chart/history —
+    // otherwise deleting a topic wouldn't change its cumulative total.
+    // (History entries recorded before this topicId tracking existed have no
+    // topicId and are left alone — there's no way to attribute them.)
+    storeSet('study:history', getHistory().filter(h => h.topicId !== id));
     renderAll();
   }
 
@@ -921,7 +927,7 @@ body::after {
     t.reviewCount = (t.reviewCount || 0) + 1;
     saveTopics(topics);
     recordActivity(today);
-    recordHistory('review');
+    recordHistory('review', id);
     renderAll();
   }
 
@@ -939,7 +945,7 @@ body::after {
     t.reviewCount = (t.reviewCount || 0) + 1;
     saveTopics(topics);
     recordActivity(today);
-    recordHistory('review');
+    recordHistory('review', id);
     renderAll();
   }
 
