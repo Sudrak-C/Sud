@@ -157,10 +157,11 @@ body::after {
 }
 .sd-stat:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
 .sd-stat-icon {
-  font-size: 19px;
-  filter: grayscale(100%) brightness(1.3);
-  opacity: 0.8;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-primary);
+  opacity: 0.85;
 }
+.sd-stat-icon svg { width: 21px; height: 21px; display: block; }
 .sd-stat-body { display: flex; flex-direction: column; }
 .sd-stat-num {
   font-family: var(--font-mono);
@@ -409,21 +410,46 @@ body::after {
 
   <div class="sd-stats-row">
     <div class="sd-stat sd-stat-accent" id="sdStatStreak">
-      <span class="sd-stat-icon">🔥</span>
+      <span class="sd-stat-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2c0 3.2-3.6 5.7-3.6 9.8a3.6 3.6 0 0 0 7.2 0c0-1.1-.35-1.9-.8-2.7.1.9-.3 1.9-1.1 1.9-1.1 0-.7-1.4-.7-2.7C13 6.4 12 4 12 2z" fill="currentColor"/>
+          <path d="M8.4 13.4c0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6c0-1-.4-1.9-.9-2.6.2 1.7-.9 3-2.1 3-1.4 0-1.8-1.2-1.6-2.6-1.6.9-2.6 1.8-2.6 2.2z" fill="currentColor"/>
+          <path d="M12 12.4c-1 .9-1.5 1.7-1.5 2.6a1.5 1.5 0 0 0 3 0c0-.9-.5-1.7-1.5-2.6z" fill="#0a0a0b"/>
+        </svg>
+      </span>
       <div class="sd-stat-body">
         <span class="sd-stat-num" id="sdStreakNum">0</span>
         <span class="sd-stat-label">Day streak</span>
       </div>
     </div>
     <div class="sd-stat">
-      <span class="sd-stat-icon">📌</span>
+      <span class="sd-stat-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g transform="rotate(45 12 12)">
+            <circle cx="12" cy="7.4" r="5" fill="currentColor"/>
+            <rect x="10.7" y="11" width="2.6" height="4.2" fill="currentColor"/>
+            <path d="M7.8 15.2h8.4L12 22.5z" fill="currentColor"/>
+          </g>
+        </svg>
+      </span>
       <div class="sd-stat-body">
         <span class="sd-stat-num" id="sdDueNum">0</span>
         <span class="sd-stat-label">Due today</span>
       </div>
     </div>
     <div class="sd-stat">
-      <span class="sd-stat-icon">📖</span>
+      <span class="sd-stat-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="5" y="1" width="16" height="21" rx="2.5" fill="currentColor"/>
+          <rect x="1.1" y="4" width="3.3" height="2" rx="1" fill="currentColor"/>
+          <rect x="1.1" y="8" width="3.3" height="2" rx="1" fill="currentColor"/>
+          <rect x="1.1" y="12" width="3.3" height="2" rx="1" fill="currentColor"/>
+          <rect x="1.1" y="16" width="3.3" height="2" rx="1" fill="currentColor"/>
+          <rect x="8.3" y="4.8" width="9.4" height="6" rx="1.2" fill="none" stroke="#0a0a0b" stroke-width="1.6"/>
+          <rect x="9.6" y="6.4" width="6.8" height="1.1" rx="0.55" fill="#0a0a0b"/>
+          <rect x="9.6" y="8.7" width="6.8" height="1.1" rx="0.55" fill="#0a0a0b"/>
+        </svg>
+      </span>
       <div class="sd-stat-body">
         <span class="sd-stat-num" id="sdTotalNum">0</span>
         <span class="sd-stat-label">Topics logged</span>
