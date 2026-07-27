@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#050506">
 <meta name="color-scheme" content="dark">
 <title>Study</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
 <style>
 :root {
@@ -778,6 +780,16 @@ body::after {
 
   window.addEventListener('storage', renderAll);
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof initCloudSync !== 'function') return;
+  initCloudSync({
+    appKey: 'study',
+    syncedKeys: ['study:topics', 'study:activity'],
+    onApplied: function () { window.dispatchEvent(new Event('storage')); }
+  });
+});
 </script>
 </body>
 </html>
