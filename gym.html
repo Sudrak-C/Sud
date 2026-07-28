@@ -28,31 +28,9 @@ const CONFIG = {
     { id: "comm",  name: "Commercial Gym" }
   ],
 
-  // Training split. Most people use Push/Pull/Legs but you can rename
-  // these to "Upper", "Lower", "Full Body", "Day A", anything.
-  days: [
-    { id: "push", name: "Push" },
-    { id: "pull", name: "Pull" },
-    { id: "legs", name: "Legs" }
-  ],
-
-  // Split rotation — the order your training days cycle through. Use day
-  // ids from `days` above, plus "rest" for off-days. The pill at the top
-  // of the app reads this + splitAnchor to compute "what day is today".
-  splitRotation: ["push", "pull", "legs", "rest"],
-
-  // Anchor: pair a real calendar date with which split day fell on it.
-  // The rotation advances from this point. Set `date` to a recent day
-  // when you knew what split you were on, and `splitId` to that day.
-  // Edit this if your split drifts.
-  splitAnchor: {
-    date: "2026-05-12",
-    splitId: "rest"
-  },
-
-  // Progression rule: hit this many reps on the top set → coach tells you
-  // to add weight next session. Lower this to be more aggressive (e.g. 6),
-  // raise it for more volume bias (e.g. 10).
+  // Progression rule: hit this many reps (or seconds, for time-based moves)
+  // on the top set → coach tells you to add weight next session. Lower
+  // this to be more aggressive (e.g. 6), raise it for more volume bias.
   upgradeAtReps: 8,
 
   // Composition estimate (optional, for the weight chart).
@@ -65,29 +43,74 @@ const CONFIG = {
     windowDays: 30           // window to compute weight + strength change
   },
 
-  // Starter exercise list. Each one needs:
-  //   name        — what shows in the dropdown
-  //   gym         — one of the gym ids above, or "both"
-  //   day         — one of the day ids above
-  //   repMin      — bottom of your target rep range
-  //   repMax      — top of your target rep range
-  //   step        — how much weight you add when progressing (kg/lb)
-  //   startWeight — starting weight (ignored when bw: true)
-  //   bw          — true for bodyweight movements (logs reps only)
+  // ==========================================================
+  // YOUR SPLIT. This is the single source of truth for both what
+  // day is "today" (via `weekdays`, 0=Sun..6=Sat) AND which
+  // exercises show up to log for each day — one place to edit
+  // either. Change this whenever your split changes; the in-app
+  // "Manage My Split" screen (Settings) edits the same data live.
   //
-  // First-run defaults. Once a user logs anything, they edit through
-  // the in-app + / gear buttons; this block stays as the seed.
-  defaultExercises: [
-    { name: "Bench press",     gym: "comm", day: "push", repMin: 5, repMax: 8,  step: 2.5, startWeight: 60 },
-    { name: "Overhead press",  gym: "comm", day: "push", repMin: 5, repMax: 8,  step: 2.5, startWeight: 35 },
-    { name: "Tricep pushdown", gym: "comm", day: "push", repMin: 8, repMax: 12, step: 2.5, startWeight: 25 },
-    { name: "Pull-ups",        gym: "both", day: "pull", repMin: 5, repMax: 10, step: 1,   startWeight: 0, bw: true },
-    { name: "Barbell row",     gym: "comm", day: "pull", repMin: 6, repMax: 10, step: 2.5, startWeight: 50 },
-    { name: "Bicep curl",      gym: "comm", day: "pull", repMin: 8, repMax: 12, step: 1.25,startWeight: 15 },
-    { name: "Back squat",      gym: "comm", day: "legs", repMin: 5, repMax: 8,  step: 5,   startWeight: 80 },
-    { name: "Romanian deadlift", gym: "comm", day: "legs", repMin: 6, repMax: 10, step: 5, startWeight: 60 },
-    { name: "Leg press",       gym: "comm", day: "legs", repMin: 8, repMax: 12, step: 5,   startWeight: 100 }
-  ]
+  // Each exercise:
+  //   name          — what shows in the list
+  //   gym           — a gym id above, or "both"
+  //   mode          — "reps" (weight × reps) or "time" (a held duration)
+  //   unilateral    — true for per-arm/leg/side movements (display only)
+  //   unilateralUnit— "arm" | "leg" | "side" (only used if unilateral)
+  //   targetSets    — how many sets you're aiming for that exercise
+  //   repMin/repMax — target rep range (or SECONDS range when mode:"time")
+  //   step          — weight increment when progressing (kg/lb)
+  //   startWeight   — starting weight (ignored when bw: true)
+  //   bw            — true for bodyweight-only movements (no weight field)
+  //   notes         — a short coaching cue shown under the exercise name
+  // ==========================================================
+  split: {
+    days: [
+      {
+        id: "d_upper_strength", name: "Upper Strength", weekdays: [1],
+        exercises: [
+          { name: "Weighted Push-Ups",        gym: "both", mode: "reps", unilateral: false, targetSets: 4, repMin: 6,  repMax: 10, step: 2.5,  startWeight: 0,  bw: false, notes: "Add weight when 10 reps becomes easy" },
+          { name: "One-Arm Dumbbell Row",      gym: "both", mode: "reps", unilateral: true, unilateralUnit: "arm", targetSets: 4, repMin: 8,  repMax: 8,  step: 2.5,  startWeight: 15, bw: false, notes: "Heavy, controlled" },
+          { name: "Dumbbell Shoulder Press",   gym: "both", mode: "reps", unilateral: false, targetSets: 4, repMin: 6,  repMax: 8,  step: 2.5,  startWeight: 15, bw: false, notes: "Don't lock elbows aggressively" },
+          { name: "Rear Delt Fly",             gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 12, repMax: 15, step: 1.25, startWeight: 6,  bw: false, notes: "Slow and controlled" },
+          { name: "Dumbbell Lateral Raise",    gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 12, repMax: 15, step: 1.25, startWeight: 6,  bw: false, notes: "Slight bend in elbows" },
+          { name: "Hanging Leg Raise",         gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 12, repMax: 12, step: 1,    startWeight: 0,  bw: true,  notes: "Core — or swap for reverse crunch" }
+        ]
+      },
+      {
+        id: "d_lower_strength", name: "Lower Strength", weekdays: [3],
+        exercises: [
+          { name: "Goblet Squat",              gym: "both", mode: "reps", unilateral: false, targetSets: 5, repMin: 5,  repMax: 5,  step: 2.5,  startWeight: 16, bw: false, notes: "Heavy" },
+          { name: "Dumbbell Romanian Deadlift",gym: "both", mode: "reps", unilateral: false, targetSets: 4, repMin: 8,  repMax: 8,  step: 2.5,  startWeight: 16, bw: false, notes: "Stretch hamstrings" },
+          { name: "Bulgarian Split Squat",     gym: "both", mode: "reps", unilateral: true, unilateralUnit: "leg", targetSets: 3, repMin: 8,  repMax: 8,  step: 2.5,  startWeight: 8,  bw: false, notes: "Control the descent" },
+          { name: "Standing Calf Raise",       gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 15, repMax: 20, step: 2.5,  startWeight: 16, bw: false, notes: "Pause at the top" },
+          { name: "Plank",                     gym: "both", mode: "time", unilateral: false, targetSets: 3, repMin: 60, repMax: 60, step: 0,     startWeight: 0,  bw: true,  notes: "Brace core" },
+          { name: "Side Plank",                gym: "both", mode: "time", unilateral: true, unilateralUnit: "side", targetSets: 3, repMin: 30, repMax: 45, step: 0,     startWeight: 0,  bw: true,  notes: "Keep hips up" }
+        ]
+      },
+      {
+        id: "d_upper_hypertrophy", name: "Upper Hypertrophy", weekdays: [5],
+        exercises: [
+          { name: "Incline/Weighted Push-Ups", gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 10, repMax: 15, step: 2.5,  startWeight: 0,  bw: false, notes: "Controlled tempo" },
+          { name: "One-Arm Dumbbell Row",      gym: "both", mode: "reps", unilateral: true, unilateralUnit: "arm", targetSets: 3, repMin: 10, repMax: 12, step: 2.5,  startWeight: 12, bw: false, notes: "Full stretch" },
+          { name: "Dumbbell Shoulder Press",   gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 10, repMax: 10, step: 2.5,  startWeight: 12, bw: false, notes: "Moderate weight" },
+          { name: "Dumbbell Lateral Raise",    gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 15, repMax: 15, step: 1.25, startWeight: 5,  bw: false, notes: "Light weight" },
+          { name: "Rear Delt Fly",             gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 15, repMax: 15, step: 1.25, startWeight: 5,  bw: false, notes: "Focus on shoulder blades" },
+          { name: "Dumbbell Curl",             gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 12, repMax: 12, step: 1.25, startWeight: 10, bw: false, notes: "Full ROM" },
+          { name: "Overhead Dumbbell Triceps Extension", gym: "both", mode: "reps", unilateral: false, targetSets: 3, repMin: 12, repMax: 12, step: 1.25, startWeight: 8,  bw: false, notes: "Stretch at bottom" }
+        ]
+      },
+      {
+        id: "d_explosive_power", name: "Explosive Power", weekdays: [6],
+        exercises: [
+          { name: "Box Jumps",                 gym: "both", mode: "reps", unilateral: false, targetSets: 5, repMin: 3,  repMax: 3,  step: 0,    startWeight: 0,  bw: true,  notes: "Maximum height, full recovery" },
+          { name: "Broad Jumps",               gym: "both", mode: "reps", unilateral: false, targetSets: 5, repMin: 3,  repMax: 3,  step: 0,    startWeight: 0,  bw: true,  notes: "Max distance" },
+          { name: "Dumbbell Push Press",       gym: "both", mode: "reps", unilateral: false, targetSets: 4, repMin: 5,  repMax: 5,  step: 2.5,  startWeight: 12, bw: false, notes: "Explosive" },
+          { name: "Medicine Ball Slams",       gym: "both", mode: "reps", unilateral: false, targetSets: 4, repMin: 8,  repMax: 8,  step: 0,    startWeight: 0,  bw: true,  notes: "Maximum speed — or explosive push-ups" },
+          { name: "Hollow Body Hold",          gym: "both", mode: "time", unilateral: false, targetSets: 3, repMin: 30, repMax: 45, step: 0,     startWeight: 0,  bw: true,  notes: "Stay tight" }
+        ]
+      }
+    ]
+  }
 };
 </script>
 
@@ -289,44 +312,87 @@ img, video, canvas, svg { max-width: 100%; }
   content: ''; width: 24px; height: 1px; background: var(--border-strong);
 }
 
-/* ----- Exercise picker ----- */
-.po-exercise-bar { display: flex; gap: 8px; align-items: center; }
-.po-ex-select {
-  flex: 1 1 0; min-width: 0;
+/* ----- Exercise list (Today's exercises) ----- */
+.po-ex-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.po-ex-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  background: rgba(0,0,0,0.28);
-  color: var(--text-1); border-radius: 12px;
-  font-family: inherit; font-size: 14px; font-weight: 500;
-  appearance: none; -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%2387847B' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
-  background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
-  text-overflow: ellipsis; overflow: hidden;
-}
-.po-ex-select:focus {
-  outline: none; border-color: rgba(255,255,255,0.40);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
-}
-.po-ex-select:disabled { opacity: 0.5; }
-.po-btn-icon {
-  width: 44px; height: 44px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-  color: var(--text-2); border-radius: 12px;
-  font-size: 16px; cursor: pointer;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
-  flex-shrink: 0;
+  background: rgba(255,255,255,0.025);
+  border-radius: 12px; cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
   -webkit-tap-highlight-color: transparent;
 }
-.po-btn-icon:hover { background: rgba(255,255,255,0.10); color: var(--text-1); }
-.po-btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+.po-ex-row:hover { background: rgba(255,255,255,0.05); }
+.po-ex-row.active { border-color: rgba(255,255,255,0.40); background: rgba(255,255,255,0.06); }
+.po-ex-row-main { min-width: 0; }
+.po-ex-row-name { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.po-ex-row-notes { font-size: 11.5px; color: var(--text-3); margin-top: 3px; line-height: 1.35; }
+.po-ex-row-side { flex-shrink: 0; text-align: right; }
+.po-ex-row-target { font-size: 11px; color: var(--text-3); font-weight: 600; }
+.po-ex-row-progress {
+  font-size: 12px; font-weight: 700; color: var(--text-2); margin-top: 3px;
+}
+.po-ex-row-progress.is-complete { color: var(--good); }
 .po-no-ex {
   background: rgba(255,255,255,0.025);
   border: 1px dashed var(--border);
   border-radius: 12px; padding: 16px; text-align: center;
   font-size: 13px; color: var(--text-3); margin-top: 10px;
 }
+
+/* ----- Rest day banner ----- */
+.po-rest-banner {
+  background: rgba(255,255,255,0.025);
+  border: 1px dashed var(--border);
+  border-radius: 12px; padding: 18px; text-align: center;
+}
+.po-rest-banner-title {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 6px;
+}
+.po-rest-banner-sub { font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
+
+/* ----- Manage My Split builder ----- */
+.po-split-days { display: flex; flex-direction: column; gap: 14px; margin-bottom: 8px; }
+.po-split-day {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px; padding: 12px;
+}
+.po-split-day-head { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.po-split-day-name {
+  flex: 1 1 0; min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.25);
+  color: var(--text-1); border-radius: 8px;
+  font-family: inherit; font-size: 13.5px; font-weight: 600;
+}
+.po-split-day-weekdays { display: flex; gap: 6px; margin-bottom: 10px; }
+.po-wd-chip {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-3); border-radius: 50%;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.po-wd-chip.active {
+  background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.40); color: var(--text-1);
+}
+.po-split-day-exlist { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.po-split-ex-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 9px;
+  background: rgba(255,255,255,0.025);
+  border-radius: 8px;
+}
+.po-split-ex-name { font-size: 12.5px; color: var(--text-1); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.po-split-ex-target { font-size: 11px; color: var(--text-3); flex-shrink: 0; margin-left: auto; margin-right: 4px; }
+.po-split-ex-empty { font-size: 12px; color: var(--text-3); padding: 6px 2px; }
 
 /* ----- Bodyweight banner ----- */
 .po-bw-banner {
@@ -626,54 +692,15 @@ img, video, canvas, svg { max-width: 100%; }
 }
 .po-add-row-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-1); }
 
-/* Rotation editor list */
-.rot-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.rot-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto auto auto;
-  gap: 6px; align-items: center;
-  padding: 8px 10px;
-  background: rgba(255,255,255,0.025);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  transition: border-color 0.15s, background 0.15s;
-}
-.rot-row.is-today {
-  background: linear-gradient(180deg, rgba(110,231,183,0.10), rgba(255,255,255,0.025));
-  border-color: rgba(110,231,183,0.30);
-}
-.rot-row-num {
-  font-size: 11px; color: var(--text-3);
-  font-family: var(--font-mono); font-weight: 700;
-  width: 18px; text-align: center;
-}
-.rot-row input {
-  background: transparent; border: none; outline: none;
-  color: var(--text-1); font-family: inherit; font-size: 13px;
-  padding: 4px 0; min-width: 0;
-}
-.rot-row .rot-mini {
+/* Small icon-only action button (split builder day/exercise rows) */
+.rot-mini {
   background: transparent; border: none;
   color: var(--text-3); font-size: 14px;
-  cursor: pointer; padding: 4px 8px;
+  cursor: pointer; padding: 4px 8px; flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
-.rot-row .rot-mini:hover { color: var(--text-1); }
-.rot-row .rot-mini-del:hover { color: var(--bad); }
-.rot-row .rot-today-tag {
-  font-size: 8px; font-weight: 800; letter-spacing: 0.10em;
-  color: var(--good); padding: 2px 6px; border-radius: 999px;
-  background: rgba(110,231,183,0.16);
-}
-.rot-row .rot-today-btn {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  color: var(--text-3); font-size: 9px; font-weight: 700;
-  letter-spacing: 0.06em; padding: 4px 8px; border-radius: 999px;
-  cursor: pointer; text-transform: uppercase;
-  -webkit-tap-highlight-color: transparent;
-}
-.rot-row .rot-today-btn:hover { color: var(--good); border-color: rgba(110,231,183,0.30); }
+.rot-mini:hover { color: var(--text-1); }
+.rot-mini-del:hover { color: var(--bad); }
 
 @media (max-width: 480px) {
   /* === Mobile / iPhone polish === */
@@ -693,11 +720,6 @@ img, video, canvas, svg { max-width: 100%; }
     padding: 9px 6px; font-size: 12px;
     min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-
-  /* Exercise picker */
-  .po-exercise-bar { gap: 6px; }
-  .po-ex-select { padding: 11px 10px; padding-right: 30px; font-size: 13px; }
-  .po-btn-icon { width: 38px; height: 38px; min-width: 38px; }
 
   /* Stack weight + reps vertically so every rep button fits the screen */
   .po-log-grid { grid-template-columns: 1fr; gap: 14px; }
@@ -1452,24 +1474,20 @@ img, video, canvas, svg { max-width: 100%; }
       </div>
     </div>
 
-    <!-- Exercise -->
+    <!-- Exercises -->
     <div class="po-sub-section">
-      <div class="po-sub-title">Exercise</div>
-      <div class="po-exercise-bar">
-        <select class="po-ex-select" id="exSelect"></select>
-        <button class="po-btn-icon" id="addExBtn" title="Add exercise" aria-label="Add">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-        <button class="po-btn-icon" id="editExBtn" title="Edit / delete" aria-label="Edit">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-        </button>
+      <div class="po-sub-title">Exercises</div>
+      <div class="po-rest-banner" id="poRestBanner" style="display:none">
+        <div class="po-rest-banner-title">Rest day</div>
+        <div class="po-rest-banner-sub">Nothing scheduled today — recovery is part of the plan. Pick a day above to log a catch-up session.</div>
       </div>
-      <div class="po-no-ex" id="noExMsg" style="display:none">No exercises here yet. Tap <strong>+</strong> to add one.</div>
+      <ul class="po-ex-list" id="poExList"></ul>
+      <div class="po-no-ex" id="noExMsg" style="display:none">No exercises on this day yet. Open <strong>Settings → Manage my split</strong> to add some.</div>
     </div>
 
     <!-- Log a set -->
     <div class="po-sub-section">
-      <div class="po-sub-title">Log today's top set</div>
+      <div class="po-sub-title" id="logSectionTitle">Log a set</div>
       <div class="po-bw-banner" id="bwBanner">Bodyweight — log reps only</div>
       <div class="po-last-set" id="lastSet">
         <span class="po-last-label">Last time</span>
@@ -1486,7 +1504,7 @@ img, video, canvas, svg { max-width: 100%; }
           </div>
         </div>
         <div class="po-field">
-          <label>Reps</label>
+          <label id="repsFieldLabel">Reps</label>
           <div class="po-reps-row" id="repsRow" data-value="8">
             <button type="button" class="po-reps-pill" data-v="4">4</button>
             <button type="button" class="po-reps-pill" data-v="5">5</button>
@@ -1596,31 +1614,54 @@ img, video, canvas, svg { max-width: 100%; }
       <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Gym</label>
       <div class="po-modal-seg" id="exGymSeg"></div>
     </div>
-    <div class="po-field">
-      <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Day</label>
-      <div class="po-modal-seg" id="exDaySeg"></div>
-    </div>
     <label class="po-bw-toggle">
       <input type="checkbox" id="exBw">
-      Bodyweight (track reps only, no weight)
+      Bodyweight (no added weight)
     </label>
+    <div class="po-field">
+      <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Tracking</label>
+      <div class="po-modal-seg" id="exModeSeg">
+        <button type="button" data-mode="reps" class="active">Reps</button>
+        <button type="button" data-mode="time">Time (seconds)</button>
+      </div>
+    </div>
+    <label class="po-bw-toggle">
+      <input type="checkbox" id="exUnilateral">
+      Unilateral (one side at a time)
+    </label>
+    <div class="po-field" id="exUnilateralUnitField" style="display:none">
+      <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Per</label>
+      <div class="po-modal-seg" id="exUnilateralUnitSeg">
+        <button type="button" data-unit="arm">Arm</button>
+        <button type="button" data-unit="leg">Leg</button>
+        <button type="button" data-unit="side" class="active">Side</button>
+      </div>
+    </div>
     <div class="po-field" id="exStartWeightField">
       <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Starting weight</label>
       <input type="number" id="exStartWeight" step="0.5" placeholder="20" value="20">
     </div>
     <div class="po-log-grid" id="exNumFields">
       <div class="po-field">
-        <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Reps min</label>
+        <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase" id="exRepMinLabel">Reps min</label>
         <input type="number" id="exRepMin" value="6">
       </div>
       <div class="po-field">
-        <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Reps max</label>
+        <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase" id="exRepMaxLabel">Reps max</label>
         <input type="number" id="exRepMax" value="8">
       </div>
     </div>
     <div class="po-field" id="exStepField">
       <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Increment</label>
       <input type="number" id="exStep" step="0.5" value="2.5">
+    </div>
+    <div class="po-field">
+      <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Target sets</label>
+      <input type="number" id="exTargetSets" value="3" min="1">
+    </div>
+    <div class="po-field">
+      <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Notes (optional)</label>
+      <input type="text" id="exNotes" placeholder="e.g. Slow and controlled">
     </div>
     <div class="po-modal-actions">
       <button class="po-btn-secondary" id="exModalCancel">Cancel</button>
@@ -1630,19 +1671,19 @@ img, video, canvas, svg { max-width: 100%; }
   </div>
 </div>
 
-<!-- Rotation editor modal -->
-<div class="po-modal-bg" id="rotModalBg">
-  <div class="po-modal">
-    <h3>Edit split rotation</h3>
+<!-- Manage My Split modal (days + exercises) -->
+<div class="po-modal-bg" id="splitModalBg">
+  <div class="po-modal" style="max-width: 480px;">
+    <h3>Manage my split</h3>
     <p style="font-size:12px;color:var(--text-3);margin:-6px 0 14px;line-height:1.45;">
-      Days cycle in this order, repeating forever. Today is whichever entry is highlighted.
-      Use <strong>Today is →</strong> to jump the cycle to a different starting day.
+      Each day can be scheduled to one or more weekdays — tap the letters to
+      toggle. A weekday can only belong to one day at a time. Days with no
+      weekday selected are skipped (never scheduled).
     </p>
-    <div class="rot-list" id="rotList"></div>
-    <button class="po-add-row-btn" id="rotAddBtn">+ Add day</button>
+    <div class="po-split-days" id="splitDaysList"></div>
+    <button class="po-add-row-btn" id="splitAddDayBtn">+ Add day</button>
     <div class="po-modal-actions">
-      <button class="po-btn-secondary" id="rotCancel">Cancel</button>
-      <button class="po-btn-primary" id="rotSave">Save</button>
+      <button class="po-btn-primary" id="splitModalClose">Done</button>
     </div>
   </div>
 </div>
@@ -1667,9 +1708,8 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <div class="po-set-section">
-      <h4>Days</h4>
-      <div class="po-set-list" id="setDays"></div>
-      <button class="po-add-row-btn" id="setAddDay">+ Add day</button>
+      <h4>Split</h4>
+      <button class="po-btn-secondary" id="setManageSplitBtn">Manage my split</button>
     </div>
 
     <div class="po-set-section">
@@ -1696,51 +1736,61 @@ img, video, canvas, svg { max-width: 100%; }
   // want to back up or move to another device.
   // ============================================================
   const LS_KEY = 'po_coach_v1';
+  // Old-shape data (pre-custom-split) gets backed up here once, automatically,
+  // the first time it's detected — never silently discarded.
+  const LEGACY_BACKUP_KEY = 'po_coach_v1_legacy_backup';
 
-  function buildDefaultExercises() {
-    return CONFIG.defaultExercises.map((e, i) => Object.assign({
-      id: 'seed_' + i + '_' + Date.now()
-    }, e));
+  function isNewShape(s) { return !!(s && s.split && Array.isArray(s.split.days)); }
+
+  // Flattens CONFIG.split.days[].exercises[] into the runtime state shape:
+  // state.split.days[] (just id/name/weekdays) + a flat state.exercises[]
+  // where each exercise carries a dayId back-reference. Ids are stable
+  // (derived from day id + position) so they survive re-seeding/reordering.
+  function buildSeedState() {
+    const days = CONFIG.split.days.map(d => ({ id: d.id, name: d.name, weekdays: (d.weekdays || []).slice() }));
+    const exercises = [];
+    CONFIG.split.days.forEach(d => {
+      (d.exercises || []).forEach((e, i) => {
+        exercises.push(Object.assign({ id: d.id + '_ex' + (i + 1), dayId: d.id }, e));
+      });
+    });
+    return {
+      split: { days },
+      exercises,
+      logs: {},
+      units: CONFIG.units || 'kg',
+      gyms: CONFIG.gyms.slice(),
+      filterGym: CONFIG.gyms[0].id,
+      selectedDayId: null
+    };
   }
+
   function loadState() {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (raw) return normalize(JSON.parse(raw));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (!isNewShape(parsed) && !localStorage.getItem(LEGACY_BACKUP_KEY)) {
+          try { localStorage.setItem(LEGACY_BACKUP_KEY, raw); } catch (e) {}
+        }
+        return normalize(parsed);
+      }
     } catch (e) {}
     return normalize({});
   }
   function normalize(s) {
-    s = s || {};
+    if (!isNewShape(s)) s = buildSeedState();
     s.units = s.units || CONFIG.units || 'kg';
-    s.gyms  = (Array.isArray(s.gyms)  && s.gyms.length)  ? s.gyms  : CONFIG.gyms.slice();
-    s.days  = (Array.isArray(s.days)  && s.days.length)  ? s.days  : CONFIG.days.slice();
-    s.exercises = Array.isArray(s.exercises) ? s.exercises : buildDefaultExercises();
+    s.gyms  = (Array.isArray(s.gyms) && s.gyms.length) ? s.gyms : CONFIG.gyms.slice();
+    s.exercises = Array.isArray(s.exercises) ? s.exercises : [];
     s.logs = (s.logs && typeof s.logs === 'object') ? s.logs : {};
     s.filterGym = s.filterGym || s.gyms[0].id;
-    s.filterDay = s.filterDay || s.days[0].id;
-    // Split rotation lives in state so the user can edit it via the pill modal.
-    // Stored as a plain array of names (e.g. ["Push", "Pull", "Legs", "Rest"]).
-    if (!Array.isArray(s.splitRotation) || !s.splitRotation.length) {
-      s.splitRotation = (CONFIG.splitRotation || ['Push', 'Pull', 'Legs', 'Rest']).map(x =>
-        // CONFIG used ids — map id → display name where possible
-        (CONFIG.days || []).find(d => d.id === x) ? (CONFIG.days.find(d => d.id === x).name) :
-        (x === 'rest' ? 'Rest' : x.charAt(0).toUpperCase() + x.slice(1))
-      );
-    }
-    if (!s.splitAnchor || !s.splitAnchor.date || s.splitAnchor.index == null) {
-      // Map old anchor-by-id to new anchor-by-index, or default to today=index 0.
-      const oldId = (CONFIG.splitAnchor && CONFIG.splitAnchor.splitId) || null;
-      let idx = 0;
-      if (oldId) {
-        const oldName = (CONFIG.days || []).find(d => d.id === oldId);
-        const targetName = oldName ? oldName.name : (oldId === 'rest' ? 'Rest' : oldId);
-        const found = s.splitRotation.findIndex(n => n.toLowerCase() === targetName.toLowerCase());
-        if (found >= 0) idx = found;
-      }
-      s.splitAnchor = {
-        date: (CONFIG.splitAnchor && CONFIG.splitAnchor.date) || new Date().toISOString().slice(0, 10),
-        index: idx
-      };
+    if (!s.selectedDayId || !s.split.days.find(d => d.id === s.selectedDayId)) {
+      const wd = new Date().getDay();
+      const today = s.split.days.find(d => (d.weekdays || []).indexOf(wd) !== -1);
+      // Rest day → leave nothing selected (calm rest state); the user can
+      // still manually pick any day via the Day segmented control.
+      s.selectedDayId = today ? today.id : null;
     }
     return s;
   }
@@ -1757,12 +1807,35 @@ img, video, canvas, svg { max-width: 100%; }
   function unit() { return state.units; }
   function uid() { return 'ex_' + Date.now() + '_' + Math.floor(Math.random() * 9999); }
   function gymName(id) { const g = state.gyms.find(x => x.id === id); return g ? g.name : id; }
-  function dayName(id) { const d = state.days.find(x => x.id === id); return d ? d.name : id; }
+  function dayName(id) { const d = state.split.days.find(x => x.id === id); return d ? d.name : id; }
   function estimate1RM(w, r) { if (r < 2) return w; return w * (1 + r / 30); }
   function roundToStep(v, s) { return Math.round(v / s) * s; }
+  // Weighted moves get a real 1RM-style estimate; bodyweight AND time-based
+  // (held) moves don't — there's no meaningful weight×reps relationship for
+  // a plank, so they're tracked by best rep/second count instead.
+  function skipWeight(ex) { return !!(ex && (ex.bw || ex.mode === 'time')); }
+  function unitNoun(ex) { return (ex && ex.mode === 'time') ? 'sec' : 'reps'; }
+  function targetString(ex) {
+    const suffix = ex.mode === 'time' ? 'sec' : '';
+    const range = (ex.repMin === ex.repMax) ? String(ex.repMin) : (ex.repMin + '–' + ex.repMax);
+    const per = ex.unilateral ? ('/' + (ex.unilateralUnit || 'side')) : '';
+    return (ex.targetSets || 1) + '×' + range + suffix + per;
+  }
+  function setsLoggedToday(ex) {
+    const today = wtDateKey(new Date());
+    return (state.logs[ex.id] || []).filter(l => l.date.slice(0, 10) === today).length;
+  }
+  // Today's scheduled day, purely from real weekday — replaces the old
+  // date-anchored rotation math, which couldn't represent an irregular
+  // schedule like Mon/Wed/Fri/Sat anyway. No match = rest day.
+  function getTodayScheduledDay(date) {
+    const wd = (date || new Date()).getDay();
+    return state.split.days.find(d => (d.weekdays || []).indexOf(wd) !== -1) || null;
+  }
+  function isRestDay(date) { return !getTodayScheduledDay(date); }
   function getFiltered() {
     return state.exercises.filter(e =>
-      (e.gym === state.filterGym || e.gym === 'both') && e.day === state.filterDay);
+      (e.gym === state.filterGym || e.gym === 'both') && e.dayId === state.selectedDayId);
   }
   function getCurrentEx() {
     const f = getFiltered();
@@ -1782,16 +1855,17 @@ img, video, canvas, svg { max-width: 100%; }
     if (!logs.length) return null;
     const last = logs[logs.length - 1];
     const { weight, reps } = last;
-    const { repMin, repMax, step, bw } = ex;
+    const { repMin, repMax, step } = ex;
+    const noun = unitNoun(ex);
     const upgradeAt = Math.min(CONFIG.upgradeAtReps || 8, repMax);
     let stuck = 0;
     for (let i = logs.length - 1; i >= 0; i--) {
       if (logs[i].weight === weight) stuck++; else break;
     }
-    if (bw) {
-      if (reps >= upgradeAt) return { type: 'up', weight: 0, reps: reps + 1, tag: 'Push for more', reason: reps + ' reps — strong. Push for ' + (reps + 1) + ' next time.', bw: true };
-      if (reps >= repMin) return { type: 'hold', weight: 0, reps: reps + 1, tag: 'Add a rep', reason: reps + ' reps. Push for ' + (reps + 1) + ' next session.', bw: true };
-      return { type: 'hold', weight: 0, reps: repMin, tag: 'Repeat', reason: reps + ' reps fell short. Repeat until you hit ' + repMin + '+.', bw: true };
+    if (skipWeight(ex)) {
+      if (reps >= upgradeAt) return { type: 'up', weight: 0, reps: reps + 1, tag: 'Push for more', reason: reps + ' ' + noun + ' — strong. Push for ' + (reps + 1) + ' next time.', bw: true };
+      if (reps >= repMin) return { type: 'hold', weight: 0, reps: reps + 1, tag: 'Add a ' + (noun === 'sec' ? 'second' : 'rep'), reason: reps + ' ' + noun + '. Push for ' + (reps + 1) + ' next session.', bw: true };
+      return { type: 'hold', weight: 0, reps: repMin, tag: 'Repeat', reason: reps + ' ' + noun + ' fell short. Repeat until you hit ' + repMin + '+.', bw: true };
     }
     if (stuck >= 3 && reps < repMin) {
       const dl = roundToStep(weight * 0.9, step);
@@ -1809,15 +1883,15 @@ img, video, canvas, svg { max-width: 100%; }
     $('gymSeg').innerHTML = state.gyms.map(g =>
       '<button class="po-seg-btn ' + (g.id === state.filterGym ? 'active' : '') + '" data-gym="' + g.id + '">' + escape(g.name) + '</button>'
     ).join('');
-    $('daySeg').innerHTML = state.days.map(d =>
-      '<button class="po-seg-btn ' + (d.id === state.filterDay ? 'active' : '') + '" data-day="' + d.id + '">' + escape(d.name) + '</button>'
+    $('daySeg').innerHTML = state.split.days.map(d =>
+      '<button class="po-seg-btn ' + (d.id === state.selectedDayId ? 'active' : '') + '" data-day="' + d.id + '">' + escape(d.name) + '</button>'
     ).join('');
     $('gymSeg').querySelectorAll('.po-seg-btn').forEach(b => {
       b.addEventListener('click', () => { state.filterGym = b.dataset.gym; state.currentEx = null; saveState(); renderAll(); });
     });
     $('daySeg').querySelectorAll('.po-seg-btn').forEach(b => {
       b.addEventListener('click', () => {
-        state.filterDay = b.dataset.day;
+        state.selectedDayId = b.dataset.day;
         state.currentEx = null;
         // User has now manually picked a day — stop auto-overriding to today's split.
         state._userPickedDay = true;
@@ -1825,26 +1899,56 @@ img, video, canvas, svg { max-width: 100%; }
       });
     });
   }
-  function renderSelect() {
-    const sel = $('exSelect');
-    const f = getFiltered();
+  // Tappable checklist of the selected day's exercises — replaces the old
+  // single dropdown. Tapping a row selects it as the "current" exercise for
+  // the log panel below (same getCurrentEx()-driven panel as always), and
+  // shows a live "sets logged today / target" progress chip per row.
+  function renderExerciseList() {
+    const list = $('poExList');
     const noMsg = $('noExMsg');
-    const editBtn = $('editExBtn');
-    const logBtn = $('logBtn');
-    if (!f.length) {
-      sel.innerHTML = '<option>—</option>';
-      sel.disabled = true; editBtn.disabled = true; logBtn.disabled = true;
-      noMsg.style.display = 'block'; state.currentEx = null;
+    const restBanner = $('poRestBanner');
+    // No day selected at all only happens on a fresh load that landed on a
+    // rest day (see normalize()) — show a calm rest state instead of an
+    // empty/broken list. The day-seg buttons above still let the user pick
+    // any day manually to log a catch-up session.
+    if (!state.selectedDayId) {
+      list.innerHTML = '';
+      noMsg.style.display = 'none';
+      restBanner.style.display = 'block';
+      state.currentEx = null;
       return;
     }
-    sel.disabled = false; editBtn.disabled = false; logBtn.disabled = false;
+    restBanner.style.display = 'none';
+    const f = getFiltered();
+    if (!f.length) {
+      list.innerHTML = '';
+      noMsg.style.display = 'block';
+      state.currentEx = null;
+      return;
+    }
     noMsg.style.display = 'none';
     if (!f.find(e => e.id === state.currentEx)) state.currentEx = f[0].id;
-    sel.innerHTML = f.map(e => {
-      const wLbl = e.bw ? ' · BW' : (e.startWeight ? ' · ' + e.startWeight + unit() : '');
-      const sh = e.gym === 'both' ? ' ★' : '';
-      return '<option value="' + e.id + '"' + (e.id === state.currentEx ? ' selected' : '') + '>' + escape(e.name) + wLbl + sh + '</option>';
+    list.innerHTML = f.map(e => {
+      const sh = e.gym === 'both' ? ' <span title="Both gyms">★</span>' : '';
+      const done = setsLoggedToday(e);
+      const target = e.targetSets || 1;
+      return '<li class="po-ex-row' + (e.id === state.currentEx ? ' active' : '') + '" data-id="' + e.id + '">'
+        + '<div class="po-ex-row-main">'
+        +   '<div class="po-ex-row-name">' + escape(e.name) + sh + '</div>'
+        +   (e.notes ? '<div class="po-ex-row-notes">' + escape(e.notes) + '</div>' : '')
+        + '</div>'
+        + '<div class="po-ex-row-side">'
+        +   '<div class="po-ex-row-target">' + targetString(e) + '</div>'
+        +   '<div class="po-ex-row-progress' + (done >= target ? ' is-complete' : '') + '">' + done + '/' + target + '</div>'
+        + '</div>'
+        + '</li>';
     }).join('');
+    list.querySelectorAll('.po-ex-row').forEach(row => {
+      row.addEventListener('click', () => {
+        state.currentEx = row.dataset.id;
+        saveState(); renderAll();
+      });
+    });
   }
   function renderForm() {
     const ex = getCurrentEx();
@@ -1852,17 +1956,23 @@ img, video, canvas, svg { max-width: 100%; }
     const wField = $('weightField');
     const oneRmLbl = $('oneRmLabel');
     const grid = $('logGrid');
+    const repsLbl = $('repsFieldLabel');
+    const logTitle = $('logSectionTitle');
     $('weightLabel').textContent = 'Weight (' + unit() + ')';
-    if (ex && ex.bw) {
+    if (repsLbl) repsLbl.textContent = ex && ex.mode === 'time' ? 'Seconds' : 'Reps';
+    if (ex && skipWeight(ex)) {
+      banner.textContent = ex.mode === 'time' ? 'Time-based — log duration only' : 'Bodyweight — log reps only';
       banner.classList.add('show');
       wField.style.display = 'none';
       grid.classList.add('po-bw-mode');
-      oneRmLbl.textContent = 'Best reps';
     } else {
       banner.classList.remove('show');
       wField.style.display = '';
       grid.classList.remove('po-bw-mode');
-      oneRmLbl.textContent = 'Est. 1RM';
+    }
+    oneRmLbl.textContent = skipWeight(ex) ? (ex && ex.mode === 'time' ? 'Best hold' : 'Best reps') : 'Est. 1RM';
+    if (logTitle) {
+      logTitle.textContent = ex ? ('Log a set · ' + setsLoggedToday(ex) + '/' + (ex.targetSets || 1) + ' today') : 'Log a set';
     }
   }
   function renderLastSet() {
@@ -1873,7 +1983,7 @@ img, video, canvas, svg { max-width: 100%; }
     const logs = ex ? getLogs() : [];
     if (!ex || !logs.length) { wrap.classList.remove('show'); return; }
     const last = logs[logs.length - 1];
-    const setStr = ex.bw ? (last.reps + ' reps') : (last.weight + unit() + ' × ' + last.reps);
+    const setStr = skipWeight(ex) ? (last.reps + ' ' + unitNoun(ex)) : (last.weight + unit() + ' × ' + last.reps);
     const d = new Date(last.date);
     const da = Math.floor((Date.now() - d.getTime()) / 86400000);
     const ago = da === 0 ? 'today' : da === 1 ? 'yesterday' : da + ' days ago';
@@ -1884,48 +1994,50 @@ img, video, canvas, svg { max-width: 100%; }
   function renderRx() {
     const wrap = $('rxWrap');
     const ex = getCurrentEx();
-    if (!ex) { wrap.innerHTML = '<div class="po-rx-empty">Pick a gym and day above.</div>'; return; }
+    if (!ex) { wrap.innerHTML = '<div class="po-rx-empty">Pick a day above, then an exercise.</div>'; return; }
     const logs = getLogs();
     const rx = getRx(ex, logs);
+    const noun = unitNoun(ex);
     if (!rx) {
       const sw = ex.startWeight, sr = ex.repMin;
-      const head = ex.bw
-        ? '<span class="po-accent">' + sr + '</span> reps'
-        : '<span class="po-accent">' + (sw || 0) + unit() + '</span> × ' + sr + ' reps';
-      const reason = ex.bw
-        ? 'Aim for ' + ex.repMin + '-' + ex.repMax + ' clean reps. Once you hit ' + ex.repMax + '+, push for more.'
-        : 'Hit ' + ex.repMin + '-' + ex.repMax + ' reps. Once logged, the coach will start prescribing.';
+      const head = skipWeight(ex)
+        ? '<span class="po-accent">' + sr + '</span> ' + noun
+        : '<span class="po-accent">' + (sw || 0) + unit() + '</span> × ' + sr + ' ' + noun;
+      const reason = skipWeight(ex)
+        ? 'Aim for ' + ex.repMin + '-' + ex.repMax + ' clean ' + noun + '. Once you hit ' + ex.repMax + '+, push for more.'
+        : 'Hit ' + ex.repMin + '-' + ex.repMax + ' ' + noun + '. Once logged, the coach will start prescribing.';
       wrap.innerHTML = '<div class="po-rx-card"><div class="po-rx-label">' + escape(ex.name) + ' · starting point</div><div class="po-rx-headline">' + head + '</div><span class="po-rx-tag hold">Start here</span><p class="po-rx-reason">' + reason + '</p></div>';
       return;
     }
     const head = rx.bw
-      ? '<span class="po-accent">' + rx.reps + '</span> reps'
-      : '<span class="po-accent">' + rx.weight + unit() + '</span> × ' + rx.reps + ' reps';
+      ? '<span class="po-accent">' + rx.reps + '</span> ' + noun
+      : '<span class="po-accent">' + rx.weight + unit() + '</span> × ' + rx.reps + ' ' + noun;
     wrap.innerHTML = '<div class="po-rx-card po-rx-' + rx.type + '"><div class="po-rx-label">' + escape(ex.name) + '</div><div class="po-rx-headline">' + head + '</div><span class="po-rx-tag ' + rx.type + '">' + rx.tag + '</span><p class="po-rx-reason">' + rx.reason + '</p></div>';
   }
   function renderStats() {
     const ex = getCurrentEx();
     const logs = ex ? getLogs() : [];
+    const noun = ex ? unitNoun(ex) : 'reps';
     if (!logs.length) {
       $('oneRm').innerHTML = '—<span class="po-unit">' + unit() + '</span>';
       $('bestSet').textContent = '—';
       $('sessionCount').textContent = '—';
       return;
     }
-    if (ex.bw) {
+    if (skipWeight(ex)) {
       const br = Math.max.apply(null, logs.map(l => l.reps));
-      $('oneRm').innerHTML = br + '<span class="po-unit">reps</span>';
+      $('oneRm').innerHTML = br + '<span class="po-unit">' + noun + '</span>';
     } else {
       const orm = Math.max.apply(null, logs.map(l => estimate1RM(l.weight, l.reps)));
       $('oneRm').innerHTML = Math.round(orm) + '<span class="po-unit">' + unit() + '</span>';
     }
     let best = logs[0];
     logs.forEach(l => {
-      const cur = ex.bw ? l.reps : estimate1RM(l.weight, l.reps);
-      const bestVal = ex.bw ? best.reps : estimate1RM(best.weight, best.reps);
+      const cur = skipWeight(ex) ? l.reps : estimate1RM(l.weight, l.reps);
+      const bestVal = skipWeight(ex) ? best.reps : estimate1RM(best.weight, best.reps);
       if (cur > bestVal) best = l;
     });
-    $('bestSet').textContent = ex.bw ? (best.reps + 'r') : (best.weight + '×' + best.reps);
+    $('bestSet').textContent = skipWeight(ex) ? (best.reps + (noun === 'sec' ? 's' : 'r')) : (best.weight + '×' + best.reps);
     $('sessionCount').textContent = logs.length;
   }
   function renderSparkline() {
@@ -1938,7 +2050,7 @@ img, video, canvas, svg { max-width: 100%; }
       return;
     }
     svg.style.display = 'block'; empty.style.display = 'none';
-    const vals = logs.map(l => ex.bw ? l.reps : estimate1RM(l.weight, l.reps));
+    const vals = logs.map(l => skipWeight(ex) ? l.reps : estimate1RM(l.weight, l.reps));
     const min = Math.min.apply(null, vals);
     const max = Math.max.apply(null, vals);
     const range = max - min || 1;
@@ -1967,7 +2079,7 @@ img, video, canvas, svg { max-width: 100%; }
     wrap.innerHTML = logs.slice(0, 12).map((l, i) => {
       const d = new Date(l.date);
       const dStr = (d.getMonth() + 1) + '/' + d.getDate();
-      const setStr = ex.bw ? (l.reps + ' reps') : (l.weight + unit() + ' × ' + l.reps);
+      const setStr = skipWeight(ex) ? (l.reps + ' ' + unitNoun(ex)) : (l.weight + unit() + ' × ' + l.reps);
       const realIdx = logs.length - 1 - i; // since we reversed
       return '<div class="po-hist-row">'
         + '<div class="po-hist-date">' + dStr + '</div>'
@@ -1989,39 +2101,26 @@ img, video, canvas, svg { max-width: 100%; }
       });
     });
   }
-  // Compute today's split from state.splitRotation + state.splitAnchor.
-  // Returns the rotation entry name (e.g. "Push" or "Rest") AND the index.
-  function todaySplit() {
-    try {
-      const rot = state.splitRotation;
-      if (!rot || !rot.length) return { name: '—', index: 0 };
-      const a = new Date(state.splitAnchor.date);
-      const t = new Date();
-      a.setHours(0,0,0,0); t.setHours(0,0,0,0);
-      const diffDays = Math.round((t - a) / 86400000);
-      const idx = ((state.splitAnchor.index + diffDays) % rot.length + rot.length) % rot.length;
-      return { name: rot[idx], index: idx };
-    } catch (e) {
-      return { name: (state.splitRotation && state.splitRotation[0]) || '—', index: 0 };
-    }
-  }
   function todayDateLabel() {
     const d = new Date();
     const dows = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
     const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
     return dows[d.getDay()] + ', ' + mons[d.getMonth()] + ' ' + d.getDate();
   }
-  function isRestName(name) { return /^rest\b/i.test(name || ''); }
-  function splitLabel(name) {
-    if (!name) return '—';
-    return (isRestName(name) ? 'REST DAY' : (name + ' DAY')).toUpperCase();
-  }
   function renderDayPill() {
-    const split = todaySplit();
+    const today = getTodayScheduledDay();
     $('dayPillDate').textContent = todayDateLabel();
     const splitEl = $('dayPillSplit');
-    splitEl.textContent = splitLabel(split.name);
-    splitEl.classList.toggle('is-rest', isRestName(split.name));
+    splitEl.textContent = today ? (today.name + ' DAY').toUpperCase() : 'REST DAY';
+    splitEl.classList.toggle('is-rest', !today);
+  }
+  // Jump the day filter to today's scheduled day (rest day = clear it,
+  // showing the rest banner). Tapping the pill is the fast way back to
+  // "now" after browsing/logging a different day.
+  function jumpSelectionToToday() {
+    const today = getTodayScheduledDay();
+    state.selectedDayId = today ? today.id : null;
+    saveState(); renderAll();
   }
 
   // Build the rep buttons based on the current exercise's repMin/repMax.
@@ -2059,14 +2158,14 @@ img, video, canvas, svg { max-width: 100%; }
 
   function renderAll() {
     renderDayPill();
-    renderFilters(); renderSelect(); renderForm(); renderLastSet();
+    renderFilters(); renderExerciseList(); renderForm(); renderLastSet();
     renderRepsRow();
     renderRx(); renderStats(); renderSparkline(); renderHistory();
     renderTodaysWorkout();
     renderPastWorkouts();
     // Pre-fill weight input with last logged weight (or starting weight)
     const ex = getCurrentEx();
-    if (ex && !ex.bw) {
+    if (ex && !skipWeight(ex)) {
       const logs = getLogs();
       const w = logs.length ? logs[logs.length - 1].weight : (ex.startWeight || 0);
       $('weightInput').value = w;
@@ -2154,10 +2253,10 @@ img, video, canvas, svg { max-width: 100%; }
     } else {
       empty.classList.add('hidden');
       list.innerHTML = sum.perEx.map(e => {
-        const top = e.ex.bw
-          ? 'top ' + Math.max.apply(null, e.sets.map(s => s.reps)) + ' reps'
+        const top = skipWeight(e.ex)
+          ? 'top ' + Math.max.apply(null, e.sets.map(s => s.reps)) + ' ' + unitNoun(e.ex)
           : 'top ' + Math.max.apply(null, e.sets.map(s => s.weight)) + u;
-        const meta = e.ex.bw
+        const meta = skipWeight(e.ex)
           ? (e.sets.length + ' set' + (e.sets.length === 1 ? '' : 's') + ' · ' + top)
           : (e.sets.length + ' set' + (e.sets.length === 1 ? '' : 's') + ' · ' + top + ' · ' + Math.round(e.vol) + u + ' total');
         return '<li class="po-tw-row">'
@@ -2232,32 +2331,18 @@ img, video, canvas, svg { max-width: 100%; }
   // ============================================================
   // EVENT WIRING
   // ============================================================
-  // Tap the day pill → opens the rotation editor so you can rename /
-  // reorder / add / delete entries (e.g. switch Push/Pull/Legs/Rest to
-  // Legs/Arms/Back/Chest). Long-press isn't a thing on web reliably so
-  // this is the only action — the day filter still auto-snaps on load.
-  $('dayPill').addEventListener('click', () => openRotationModal());
+  // Tap the day pill → jump back to today's scheduled day (or the rest
+  // banner). normalize() already selects today's day on first load, so
+  // this is purely a "take me back to now" shortcut after browsing.
+  $('dayPill').addEventListener('click', () => jumpSelectionToToday());
 
-  // First-load nicety: if today's split matches one of the day filters
-  // by name (case-insensitive) and the user hasn't manually picked one,
-  // pre-select that day.
-  (function autoSelectTodaySplit() {
-    const s = todaySplit();
-    if (!s.name || isRestName(s.name) || state._userPickedDay) return;
-    const match = state.days.find(d => d.name.toLowerCase() === s.name.toLowerCase());
-    if (match) state.filterDay = match.id;
-  })();
-
-  $('exSelect').addEventListener('change', e => {
-    state.currentEx = e.target.value; saveState(); renderAll();
-  });
   $('weightDownBtn').addEventListener('click', () => {
-    const ex = getCurrentEx(); if (!ex || ex.bw) return;
+    const ex = getCurrentEx(); if (!ex || skipWeight(ex)) return;
     const w = parseFloat($('weightInput').value) || 0;
     $('weightInput').value = Math.max(0, w - (ex.step || 2.5));
   });
   $('weightUpBtn').addEventListener('click', () => {
-    const ex = getCurrentEx(); if (!ex || ex.bw) return;
+    const ex = getCurrentEx(); if (!ex || skipWeight(ex)) return;
     const w = parseFloat($('weightInput').value) || 0;
     $('weightInput').value = w + (ex.step || 2.5);
   });
@@ -2275,9 +2360,9 @@ img, video, canvas, svg { max-width: 100%; }
     const ex = getCurrentEx();
     if (!ex) return;
     const reps = parseInt($('repsRow').dataset.value, 10) || 0;
-    if (reps <= 0) { alert('Pick a rep count.'); return; }
-    const w = ex.bw ? 0 : (parseFloat($('weightInput').value) || 0);
-    if (!ex.bw && w <= 0) { alert('Enter a weight.'); return; }
+    if (reps <= 0) { alert(ex.mode === 'time' ? 'Pick a duration.' : 'Pick a rep count.'); return; }
+    const w = skipWeight(ex) ? 0 : (parseFloat($('weightInput').value) || 0);
+    if (!skipWeight(ex) && w < 0) { alert('Enter a weight.'); return; }
     const arr = state.logs[ex.id] || [];
     arr.push({ weight: w, reps: reps, date: new Date().toISOString() });
     state.logs[ex.id] = arr;
@@ -2292,17 +2377,15 @@ img, video, canvas, svg { max-width: 100%; }
   });
 
   // ============================================================
-  // EXERCISE MODAL (add / edit)
+  // EXERCISE MODAL (add / edit) — day is contextual (passed in from
+  // Today's exercise list or the split builder), not picked here.
   // ============================================================
   let editingExId = null;
-  let modalGym = null, modalDay = null;
+  let modalGym = null, modalDayId = null, modalMode = 'reps', modalUnilateral = false, modalUnilateralUnit = 'side';
   function renderModalSegs() {
     $('exGymSeg').innerHTML = state.gyms.map(g =>
       '<button data-gym="' + g.id + '" class="' + (modalGym === g.id ? 'active' : '') + '">' + escape(g.name) + '</button>'
     ).join('') + '<button data-gym="both" class="' + (modalGym === 'both' ? 'active' : '') + '">Both</button>';
-    $('exDaySeg').innerHTML = state.days.map(d =>
-      '<button data-day="' + d.id + '" class="' + (modalDay === d.id ? 'active' : '') + '">' + escape(d.name) + '</button>'
-    ).join('');
     $('exGymSeg').querySelectorAll('button').forEach(b => {
       b.addEventListener('click', () => {
         modalGym = b.dataset.gym;
@@ -2310,68 +2393,112 @@ img, video, canvas, svg { max-width: 100%; }
         b.classList.add('active');
       });
     });
-    $('exDaySeg').querySelectorAll('button').forEach(b => {
-      b.addEventListener('click', () => {
-        modalDay = b.dataset.day;
-        $('exDaySeg').querySelectorAll('button').forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-      });
-    });
+    $('exModeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === modalMode));
+    $('exUnilateralUnitSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.unit === modalUnilateralUnit));
   }
-  function openExModal(mode, ex) {
+  function syncModeFieldLabels() {
+    const isTime = modalMode === 'time';
+    $('exRepMinLabel').textContent = isTime ? 'Seconds min' : 'Reps min';
+    $('exRepMaxLabel').textContent = isTime ? 'Seconds max' : 'Reps max';
+  }
+  function toggleBwFields() {
+    const skipW = $('exBw').checked || modalMode === 'time';
+    $('exStartWeightField').style.display = skipW ? 'none' : '';
+    $('exStepField').style.display = skipW ? 'none' : '';
+  }
+  function toggleUnilateralField() {
+    modalUnilateral = $('exUnilateral').checked;
+    $('exUnilateralUnitField').style.display = modalUnilateral ? '' : 'none';
+  }
+  // The split builder is the only caller of openExModal now, and both
+  // modals share the same stacking layer — hide the builder underneath
+  // while the exercise modal is open (otherwise it visually covers the
+  // exercise modal and swallows every click), then restore it on close.
+  let exModalReturnToSplit = false;
+  function openExModal(mode, ex, dayId) {
+    exModalReturnToSplit = $('splitModalBg').classList.contains('show');
+    if (exModalReturnToSplit) $('splitModalBg').classList.remove('show');
     editingExId = mode === 'edit' ? ex.id : null;
+    modalDayId = mode === 'edit' ? ex.dayId : dayId;
     $('exModalTitle').textContent = mode === 'edit' ? 'Edit exercise' : 'Add exercise';
     $('exDelete').style.display = mode === 'edit' ? 'block' : 'none';
     if (mode === 'edit') {
       $('exName').value = ex.name;
       modalGym = ex.gym;
-      modalDay = ex.day;
+      modalMode = ex.mode || 'reps';
+      modalUnilateral = !!ex.unilateral;
+      modalUnilateralUnit = ex.unilateralUnit || 'side';
       $('exBw').checked = !!ex.bw;
+      $('exUnilateral').checked = modalUnilateral;
       $('exStartWeight').value = ex.startWeight || 0;
       $('exRepMin').value = ex.repMin;
       $('exRepMax').value = ex.repMax;
       $('exStep').value = ex.step;
+      $('exTargetSets').value = ex.targetSets || 3;
+      $('exNotes').value = ex.notes || '';
     } else {
       $('exName').value = '';
       modalGym = state.filterGym;
-      modalDay = state.filterDay;
+      modalMode = 'reps';
+      modalUnilateral = false;
+      modalUnilateralUnit = 'side';
       $('exBw').checked = false;
+      $('exUnilateral').checked = false;
       $('exStartWeight').value = 20;
       $('exRepMin').value = 6;
       $('exRepMax').value = 8;
       $('exStep').value = 2.5;
+      $('exTargetSets').value = 3;
+      $('exNotes').value = '';
     }
     renderModalSegs();
     toggleBwFields();
+    toggleUnilateralField();
+    syncModeFieldLabels();
     $('exModalBg').classList.add('show');
     setTimeout(() => $('exName').focus(), 60);
   }
-  function toggleBwFields() {
-    const isBw = $('exBw').checked;
-    $('exStartWeightField').style.display = isBw ? 'none' : '';
-    $('exStepField').style.display = isBw ? 'none' : '';
-  }
   $('exBw').addEventListener('change', toggleBwFields);
-  $('addExBtn').addEventListener('click', () => openExModal('add'));
-  $('editExBtn').addEventListener('click', () => {
-    const ex = getCurrentEx();
-    if (ex) openExModal('edit', ex);
+  $('exUnilateral').addEventListener('change', toggleUnilateralField);
+  $('exModeSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    modalMode = b.dataset.mode;
+    $('exModeSeg').querySelectorAll('button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    toggleBwFields();
+    syncModeFieldLabels();
   });
-  $('exModalCancel').addEventListener('click', () => $('exModalBg').classList.remove('show'));
+  $('exUnilateralUnitSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    modalUnilateralUnit = b.dataset.unit;
+    $('exUnilateralUnitSeg').querySelectorAll('button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+  });
+  function closeExModal() {
+    $('exModalBg').classList.remove('show');
+    if (exModalReturnToSplit) { renderSplitBuilder(); $('splitModalBg').classList.add('show'); }
+  }
+  $('exModalCancel').addEventListener('click', closeExModal);
   $('exModalSave').addEventListener('click', () => {
     const name = $('exName').value.trim();
     if (!name) { alert('Name is required.'); return; }
     if (!modalGym) { alert('Pick a gym.'); return; }
-    if (!modalDay) { alert('Pick a day.'); return; }
+    if (!modalDayId) { alert('No day selected — add this exercise from a day in Manage My Split.'); return; }
     const isBw = $('exBw').checked;
-    const repMin = parseInt($('exRepMin').value, 10) || 6;
-    const repMax = parseInt($('exRepMax').value, 10) || 8;
+    const mode = modalMode;
+    const skipW = isBw || mode === 'time';
+    const repMin = parseInt($('exRepMin').value, 10) || 1;
+    const repMax = parseInt($('exRepMax').value, 10) || repMin;
+    const targetSets = Math.max(1, parseInt($('exTargetSets').value, 10) || 1);
     const data = {
-      name, gym: modalGym, day: modalDay,
+      name, gym: modalGym, dayId: modalDayId,
+      mode, unilateral: modalUnilateral, unilateralUnit: modalUnilateral ? modalUnilateralUnit : null,
       bw: isBw,
-      startWeight: isBw ? 0 : (parseFloat($('exStartWeight').value) || 0),
+      startWeight: skipW ? 0 : (parseFloat($('exStartWeight').value) || 0),
       repMin, repMax,
-      step: isBw ? 1 : (parseFloat($('exStep').value) || 2.5)
+      step: skipW ? 1 : (parseFloat($('exStep').value) || 2.5),
+      targetSets,
+      notes: $('exNotes').value.trim()
     };
     if (editingExId) {
       const ex = state.exercises.find(e => e.id === editingExId);
@@ -2381,10 +2508,10 @@ img, video, canvas, svg { max-width: 100%; }
       state.exercises.push(ex);
       state.currentEx = ex.id;
       state.filterGym = (modalGym === 'both') ? state.filterGym : modalGym;
-      state.filterDay = modalDay;
+      state.selectedDayId = modalDayId;
     }
     saveState();
-    $('exModalBg').classList.remove('show');
+    closeExModal();
     renderAll();
   });
   $('exDelete').addEventListener('click', () => {
@@ -2395,107 +2522,111 @@ img, video, canvas, svg { max-width: 100%; }
     if (state.currentEx === editingExId) state.currentEx = null;
     editingExId = null;
     saveState();
-    $('exModalBg').classList.remove('show');
+    closeExModal();
     renderAll();
   });
 
   // ============================================================
-  // ROTATION EDITOR (tap the day pill)
-  // Edit the split cycle in place: rename, reorder, add, delete.
-  // "Today is →" jumps the cycle anchor to any entry, so you can change
-  // both the order AND which day in that order is "today".
+  // MANAGE MY SPLIT (tap the day pill's "Manage my split" entry in
+  // Settings) — one place to add/rename/reorder/delete days, assign each
+  // day's weekday(s), and add/edit/delete each day's exercises. This is
+  // the thing that makes the whole split genuinely re-editable, not just
+  // a one-time hardcoded seed.
   // ============================================================
-  let rotDraft = null;          // working copy while modal is open
-  let rotDraftTodayIdx = 0;     // which entry IS today in the draft
+  const WD_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const WD_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  function openRotationModal() {
-    rotDraft = (state.splitRotation || []).slice();
-    if (!rotDraft.length) rotDraft = ['Push', 'Pull', 'Legs', 'Rest'];
-    rotDraftTodayIdx = todaySplit().index;
-    if (rotDraftTodayIdx >= rotDraft.length) rotDraftTodayIdx = 0;
-    renderRotList();
-    $('rotModalBg').classList.add('show');
-  }
-
-  function renderRotList() {
-    const list = $('rotList');
-    list.innerHTML = rotDraft.map((name, i) => {
-      const isToday = (i === rotDraftTodayIdx);
-      return '<div class="rot-row ' + (isToday ? 'is-today' : '') + '" data-i="' + i + '">'
-        + '<span class="rot-row-num">' + (i + 1) + '</span>'
-        + '<input type="text" value="' + escape(name) + '" placeholder="e.g. Arms" maxlength="30">'
-        + (isToday
-            ? '<span class="rot-today-tag">TODAY</span>'
-            : '<button type="button" class="rot-today-btn" data-action="today">Today is →</button>')
-        + '<button type="button" class="rot-mini" data-action="up"   aria-label="Move up">↑</button>'
-        + '<button type="button" class="rot-mini" data-action="down" aria-label="Move down">↓</button>'
-        + '<button type="button" class="rot-mini rot-mini-del" data-action="del" aria-label="Delete">×</button>'
+  function renderSplitBuilder() {
+    const wrap = $('splitDaysList');
+    wrap.innerHTML = state.split.days.map((d, i) => {
+      const exList = state.exercises.filter(e => e.dayId === d.id);
+      const wds = d.weekdays || [];
+      return '<div class="po-split-day" data-i="' + i + '">'
+        + '<div class="po-split-day-head">'
+        +   '<input type="text" class="po-split-day-name" data-field="name" value="' + escape(d.name) + '" placeholder="Day name" maxlength="30">'
+        +   '<button type="button" class="rot-mini" data-action="up" aria-label="Move up">↑</button>'
+        +   '<button type="button" class="rot-mini" data-action="down" aria-label="Move down">↓</button>'
+        +   '<button type="button" class="rot-mini rot-mini-del" data-action="del" aria-label="Delete">×</button>'
+        + '</div>'
+        + '<div class="po-split-day-weekdays">'
+        +   WD_LABELS.map((lbl, wd) => '<button type="button" class="po-wd-chip' + (wds.indexOf(wd) !== -1 ? ' active' : '') + '" data-wd="' + wd + '" title="' + WD_NAMES[wd] + '">' + lbl + '</button>').join('')
+        + '</div>'
+        + '<div class="po-split-day-exlist">'
+        +   (exList.length ? exList.map(e =>
+              '<div class="po-split-ex-row" data-exid="' + e.id + '">'
+              + '<span class="po-split-ex-name">' + escape(e.name) + '</span>'
+              + '<span class="po-split-ex-target">' + targetString(e) + '</span>'
+              + '<button type="button" class="rot-mini" data-action="editex" aria-label="Edit">✎</button>'
+              + '</div>'
+            ).join('') : '<div class="po-split-ex-empty">No exercises yet.</div>')
+        + '</div>'
+        + '<button type="button" class="po-add-row-btn" data-action="addex">+ Add exercise</button>'
         + '</div>';
     }).join('');
-    list.querySelectorAll('.rot-row').forEach(row => {
-      const i = parseInt(row.dataset.i, 10);
-      row.querySelector('input').addEventListener('input', e => { rotDraft[i] = e.target.value; });
-      const upBtn = row.querySelector('[data-action="up"]');
-      const dnBtn = row.querySelector('[data-action="down"]');
-      const delBtn = row.querySelector('[data-action="del"]');
-      const todayBtn = row.querySelector('[data-action="today"]');
-      if (upBtn) upBtn.addEventListener('click', () => {
+
+    wrap.querySelectorAll('.po-split-day').forEach(card => {
+      const i = parseInt(card.dataset.i, 10);
+      const day = state.split.days[i];
+      card.querySelector('[data-field="name"]').addEventListener('input', e => {
+        day.name = e.target.value; saveState(); renderAll();
+      });
+      card.querySelector('[data-action="up"]').addEventListener('click', () => {
         if (i === 0) return;
-        [rotDraft[i-1], rotDraft[i]] = [rotDraft[i], rotDraft[i-1]];
-        if (rotDraftTodayIdx === i)   rotDraftTodayIdx = i - 1;
-        else if (rotDraftTodayIdx === i - 1) rotDraftTodayIdx = i;
-        renderRotList();
+        [state.split.days[i - 1], state.split.days[i]] = [state.split.days[i], state.split.days[i - 1]];
+        saveState(); renderSplitBuilder(); renderAll();
       });
-      if (dnBtn) dnBtn.addEventListener('click', () => {
-        if (i >= rotDraft.length - 1) return;
-        [rotDraft[i+1], rotDraft[i]] = [rotDraft[i], rotDraft[i+1]];
-        if (rotDraftTodayIdx === i)   rotDraftTodayIdx = i + 1;
-        else if (rotDraftTodayIdx === i + 1) rotDraftTodayIdx = i;
-        renderRotList();
+      card.querySelector('[data-action="down"]').addEventListener('click', () => {
+        if (i >= state.split.days.length - 1) return;
+        [state.split.days[i + 1], state.split.days[i]] = [state.split.days[i], state.split.days[i + 1]];
+        saveState(); renderSplitBuilder(); renderAll();
       });
-      if (delBtn) delBtn.addEventListener('click', () => {
-        if (rotDraft.length <= 1) { alert('Need at least one day in the cycle.'); return; }
-        rotDraft.splice(i, 1);
-        if (rotDraftTodayIdx >= rotDraft.length) rotDraftTodayIdx = rotDraft.length - 1;
-        else if (i < rotDraftTodayIdx) rotDraftTodayIdx--;
-        renderRotList();
+      card.querySelector('[data-action="del"]').addEventListener('click', () => {
+        if (state.split.days.length <= 1) { alert('You need at least one day.'); return; }
+        if (!confirm('Delete "' + day.name + '" and all its exercises + logs?')) return;
+        const exIds = state.exercises.filter(e => e.dayId === day.id).map(e => e.id);
+        state.exercises = state.exercises.filter(e => e.dayId !== day.id);
+        exIds.forEach(id => delete state.logs[id]);
+        state.split.days.splice(i, 1);
+        if (state.selectedDayId === day.id) state.selectedDayId = null;
+        if (exIds.indexOf(state.currentEx) !== -1) state.currentEx = null;
+        saveState(); renderSplitBuilder(); renderAll();
       });
-      if (todayBtn) todayBtn.addEventListener('click', () => {
-        rotDraftTodayIdx = i;
-        renderRotList();
+      card.querySelectorAll('.po-wd-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const wd = parseInt(chip.dataset.wd, 10);
+          const wasActive = (day.weekdays || []).indexOf(wd) !== -1;
+          // A weekday can only belong to one day — strip it from every
+          // day first, then (re)assign it to this one if it was off.
+          state.split.days.forEach(dd => { dd.weekdays = (dd.weekdays || []).filter(w => w !== wd); });
+          if (!wasActive) day.weekdays.push(wd);
+          saveState(); renderSplitBuilder(); renderAll();
+        });
+      });
+      card.querySelector('[data-action="addex"]').addEventListener('click', () => openExModal('add', null, day.id));
+      card.querySelectorAll('[data-action="editex"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const exId = btn.closest('.po-split-ex-row').dataset.exid;
+          const ex = state.exercises.find(e => e.id === exId);
+          if (ex) openExModal('edit', ex);
+        });
       });
     });
   }
 
-  $('rotAddBtn').addEventListener('click', () => {
-    rotDraft.push('New day');
-    renderRotList();
-    // Focus the newly added input
-    setTimeout(() => {
-      const inputs = $('rotList').querySelectorAll('input');
-      const last = inputs[inputs.length - 1];
-      if (last) { last.focus(); last.select(); }
-    }, 30);
+  $('setManageSplitBtn').addEventListener('click', () => {
+    $('setModalBg').classList.remove('show');
+    renderSplitBuilder();
+    $('splitModalBg').classList.add('show');
   });
-  $('rotCancel').addEventListener('click', () => {
-    $('rotModalBg').classList.remove('show');
-    rotDraft = null;
-  });
-  $('rotSave').addEventListener('click', () => {
-    // Trim + drop empty entries
-    const cleaned = rotDraft.map(s => (s || '').trim()).filter(Boolean);
-    if (!cleaned.length) { alert('Need at least one day in the cycle.'); return; }
-    let newTodayIdx = rotDraftTodayIdx;
-    if (newTodayIdx >= cleaned.length) newTodayIdx = 0;
-    state.splitRotation = cleaned;
-    state.splitAnchor = {
-      date: new Date().toISOString().slice(0, 10),
-      index: newTodayIdx
-    };
-    saveState();
-    $('rotModalBg').classList.remove('show');
-    rotDraft = null;
+  $('splitModalClose').addEventListener('click', () => {
+    $('splitModalBg').classList.remove('show');
     renderAll();
+  });
+  $('splitAddDayBtn').addEventListener('click', () => {
+    const name = (prompt('New day name (e.g. "Push Day"):') || '').trim();
+    if (!name) return;
+    state.split.days.push({ id: 'd_' + Date.now(), name, weekdays: [] });
+    saveState(); renderSplitBuilder(); renderAll();
   });
 
   // ============================================================
@@ -2511,12 +2642,6 @@ img, video, canvas, svg { max-width: 100%; }
       + '<button class="po-mini-btn" data-action="del" aria-label="Delete">×</button>'
       + '</div>'
     ).join('');
-    $('setDays').innerHTML = state.days.map((d, i) =>
-      '<div class="po-set-row" data-i="' + i + '">'
-      + '<input type="text" value="' + escape(d.name) + '" data-field="name" placeholder="Day name">'
-      + '<button class="po-mini-btn" data-action="del" aria-label="Delete">×</button>'
-      + '</div>'
-    ).join('');
     $('setGyms').querySelectorAll('.po-set-row').forEach(row => {
       const i = parseInt(row.dataset.i, 10);
       row.querySelector('input').addEventListener('input', e => {
@@ -2528,20 +2653,6 @@ img, video, canvas, svg { max-width: 100%; }
         if (!confirm('Remove "' + state.gyms[i].name + '"? Exercises tagged to this gym will become invisible until you reassign them.')) return;
         state.gyms.splice(i, 1);
         if (!state.gyms.find(g => g.id === state.filterGym)) state.filterGym = state.gyms[0].id;
-        saveState(); renderSettings(); renderAll();
-      });
-    });
-    $('setDays').querySelectorAll('.po-set-row').forEach(row => {
-      const i = parseInt(row.dataset.i, 10);
-      row.querySelector('input').addEventListener('input', e => {
-        state.days[i].name = e.target.value;
-        saveState();
-      });
-      row.querySelector('[data-action="del"]').addEventListener('click', () => {
-        if (state.days.length <= 1) { alert('You need at least one day.'); return; }
-        if (!confirm('Remove "' + state.days[i].name + '"?')) return;
-        state.days.splice(i, 1);
-        if (!state.days.find(d => d.id === state.filterDay)) state.filterDay = state.days[0].id;
         saveState(); renderSettings(); renderAll();
       });
     });
@@ -2569,14 +2680,6 @@ img, video, canvas, svg { max-width: 100%; }
     state.gyms.push({ id, name });
     saveState(); renderSettings(); renderAll();
   });
-  $('setAddDay').addEventListener('click', () => {
-    const name = (prompt('New day name:') || '').trim();
-    if (!name) return;
-    const id = 'd_' + Date.now();
-    state.days.push({ id, name });
-    saveState(); renderSettings(); renderAll();
-  });
-
   // Export / Import / Reset
   $('setExport').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -2818,7 +2921,7 @@ img, video, canvas, svg { max-width: 100%; }
     let totalVolumeInWindow = 0;
     state.exercises.forEach(ex => {
       const logs = (state.logs[ex.id] || []).slice();
-      if (logs.length < 2 || ex.bw) {
+      if (logs.length < 2 || skipWeight(ex)) {
         // Still count volume / sessions even for bodyweight + sparse exercises
         logs.forEach(l => {
           if (new Date(l.date) >= start) {
