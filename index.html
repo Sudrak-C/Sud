@@ -1766,7 +1766,7 @@ body::after {
       const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt, model: 'gemini-2.5-flash-lite', json: true })
+        body: JSON.stringify({ prompt: prompt, model: 'gemini-3.5-flash-lite', json: true })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gemini request failed');

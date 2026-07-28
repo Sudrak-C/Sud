@@ -7,13 +7,13 @@
 //     headers: { 'Content-Type': 'application/json' },
 //     body: JSON.stringify({
 //       prompt: 'your prompt here',
-//       model: 'gemini-2.0-flash',   // optional, defaults below
+//       model: 'gemini-3.6-flash',   // optional, defaults below
 //       json: false                  // optional — true forces JSON-only output
 //     })
 //   })
 // Response: { text: '...' } on success, { error: '...' } on failure.
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
