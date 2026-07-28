@@ -241,10 +241,11 @@ body::after {
 
 /* ===== Calendar ===== */
 :root {
-  --cal-study: #eb6834;
   --cal-health: #1baf7a;
   --cal-deadline: #e5484d;
   --cal-opportunity: #eda100;
+  --cal-accent: #b794f4;
+  --cal-accent-bg: rgba(183, 148, 244, 0.10);
 }
 .cal-section { margin-bottom: 22px; }
 .cal-subtitle {
@@ -324,15 +325,15 @@ body::after {
 }
 .cal-week-day:hover { background: rgba(255,255,255,0.06); }
 .cal-week-day.is-today {
-  border-color: var(--cal-study);
-  background: rgba(235, 104, 52, 0.08);
+  border-color: var(--cal-accent);
+  background: var(--cal-accent-bg);
 }
 .cal-week-day.is-selected { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35); }
 .cal-week-day-name {
   font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
   color: var(--text-tertiary);
 }
-.cal-week-day.is-today .cal-week-day-name { color: var(--cal-study); }
+.cal-week-day.is-today .cal-week-day-name { color: var(--cal-accent); }
 .cal-week-day-num {
   font-family: var(--font-mono);
   font-size: 13px; font-weight: 700;
@@ -408,8 +409,8 @@ body::after {
 .cal-month-cell:hover { background: rgba(255,255,255,0.06); }
 .cal-month-cell.is-faded { opacity: 0.32; }
 .cal-month-cell.is-today {
-  border-color: var(--cal-study);
-  background: rgba(235, 104, 52, 0.08);
+  border-color: var(--cal-accent);
+  background: var(--cal-accent-bg);
 }
 .cal-month-cell.is-selected { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35); }
 .cal-month-cell-num {
@@ -417,7 +418,7 @@ body::after {
   font-size: 11px; font-weight: 700;
   color: var(--text-secondary);
 }
-.cal-month-cell.is-today .cal-month-cell-num { color: var(--cal-study); }
+.cal-month-cell.is-today .cal-month-cell-num { color: var(--cal-accent); }
 .cal-month-cell-dots { display: flex; gap: 3px; flex-wrap: wrap; }
 .cal-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 .cal-dot.is-deadline-pulse { animation: cal-pulse 1.8s ease-in-out infinite; }
@@ -433,7 +434,7 @@ body::after {
   overflow: hidden;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(235, 104, 52, 0.35);
+  border: 1px solid rgba(183, 148, 244, 0.35);
   backdrop-filter: blur(24px) saturate(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(1.2);
   box-shadow: 0 12px 40px rgba(0,0,0,0.45);
@@ -451,7 +452,7 @@ body::after {
 .cal-drawer-eyebrow {
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--cal-study);
+  color: var(--cal-accent);
   margin-bottom: 4px;
 }
 .cal-drawer-date { font-size: 16px; font-weight: 700; color: var(--text-primary); }
@@ -1215,15 +1216,15 @@ body::after {
 
   // ---------- Day Ring ----------
   const PALETTE = [
-    [0,    [255, 216, 158]],
-    [12.5, [255, 205, 121]],
-    [25,   [255, 227, 143]],
-    [37.5, [255, 183, 106]],
-    [50,   [255, 149,  89]],
-    [62.5, [243, 111,  79]],
-    [75,   [226,  93, 122]],
-    [87.5, [123,  91, 176]],
-    [100,  [ 47,  58, 102]]
+    [0,    [255, 214, 232]],
+    [12.5, [255, 179, 217]],
+    [25,   [255, 143, 203]],
+    [37.5, [242, 111, 189]],
+    [50,   [214,  93, 177]],
+    [62.5, [180,  79, 194]],
+    [75,   [156,  79, 209]],
+    [87.5, [124,  63, 176]],
+    [100,  [ 75,  46, 131]]
   ];
   function lerp(a, b, t) { return a + (b - a) * t; }
   function paletteAt(p) {
