@@ -1813,21 +1813,33 @@ body::after {
       'or "the one I just added":\n' + memoryBlock + '\n\n' +
       'Current upcoming events (id: "title" [at time] on date [category]):\n' + existing + '\n\n' +
       'The user just typed: "' + text + '"\n\n' +
-      'Decide the action: "add" a new event, "remove" an existing one, or "edit" (reschedule/rename/recategorize) an existing one.\n' +
-      '- add: something new to schedule. Only include a "time" if the user actually states one (e.g. "at 6pm", "9am", "noon") — ' +
-      'otherwise set time to null. Never guess a time that wasn\'t mentioned.\n' +
-      '- remove: user wants to delete/cancel/clear an existing item. Match it using the event list and recent conversation above.\n' +
-      '- edit: user wants to change/move/reschedule/rename an existing item rather than delete it (e.g. "move X to Friday", ' +
-      '"push my gym to 6pm", "rename X to Y"). Match the target the same way, and only include the fields that should change.\n\n' +
+      'Decide the action: "add" new event(s), "remove" existing event(s), or "edit" (reschedule/rename/recategorize) existing event(s). ' +
+      'Each action can apply to ONE thing or MANY at once — use plural fields ("dates" for add, "ids" for remove/edit) for both cases.\n\n' +
+      '- add: something new to schedule.\n' +
+      '  · Single event → "dates" has one date. Recurring pattern (e.g. "gym mon wed fri", "every Tuesday") → "dates" lists ' +
+      'every matching date. If the user gives no explicit end date or count for a recurring pattern, generate occurrences ' +
+      'for the next 4 weeks from today.\n' +
+      '  · Only include a "time" if the user actually states one (e.g. "at 6pm", "9am", "noon") — otherwise set time to null. ' +
+      'Never guess a time that wasn\'t mentioned.\n' +
+      '- remove: user wants to delete/cancel/clear existing item(s). This can be ONE item ("remove gym") or MANY matching a ' +
+      'description ("remove all homework deadlines from Monday to Friday", "clear everything this week", "delete all gym ' +
+      'sessions"). Search the event list above (title, date, category) and recent conversation, and return the ids of ' +
+      'EVERY event that matches — not just the first one.\n' +
+      '- edit: user wants to change/move/reschedule/rename/recategorize existing item(s) rather than delete them (e.g. ' +
+      '"move X to Friday", "push my gym to 6pm", "move all deadlines this week back one day"). Match target(s) the same ' +
+      'way as remove (one or many). Return a SEPARATE {id, changes} entry per event — this matters when the same request ' +
+      'affects each event differently, e.g. "push back one day" means EACH event\'s own date shifts by one day from ITS ' +
+      'current date, not that every matched event gets the same new date. Compute each event\'s exact resulting date/time ' +
+      'yourself using its current date/time shown in the event list above. Only include the fields that actually change.\n\n' +
       'Category rules: use "deadline" for anything with an explicit due date, submission, or deadline (homework due, ' +
       'assignment due, project due, essay due, bill due) — even if the subject is study-related. Use "study" only for ' +
       'general studying/reviewing with no hard due date. Use "health" for gym/workouts/appointments/medication. Use ' +
       '"opportunity" for gigs/events/interviews/social opportunities.\n\n' +
       'Return ONLY a JSON object, no markdown, no explanation:\n' +
-      '- add: {"action": "add", "title": string, "date": "YYYY-MM-DD", "time": "HH:MM" | null, "category": "study" | "health" | "deadline" | "opportunity"}\n' +
-      '- remove: {"action": "remove", "id": "<exact id from the list above>"} — if no confident match, use id: null\n' +
-      '- edit: {"action": "edit", "id": "<exact id>", "changes": {"date"?: "YYYY-MM-DD", "time"?: "HH:MM" | null, "title"?: string, "category"?: string}} ' +
-      '— if no confident match, use id: null';
+      '- add: {"action": "add", "title": string, "dates": ["YYYY-MM-DD", ...], "time": "HH:MM" | null, "category": "study" | "health" | "deadline" | "opportunity"}\n' +
+      '- remove: {"action": "remove", "ids": ["<exact id from the list above>", ...]} — empty array if no confident match\n' +
+      '- edit: {"action": "edit", "edits": [{"id": "<exact id>", "changes": {"date"?: "YYYY-MM-DD", "time"?: "HH:MM" | null, "title"?: string, "category"?: string}}, ...]} ' +
+      '— one entry per matched event, each with its own computed changes; empty array if no confident match';
     try {
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -1842,24 +1854,33 @@ body::after {
 
       let resultSummary = '';
       if (parsed.action === 'remove') {
-        const target = parsed.id && calEvents.find(e => e.id === parsed.id);
-        if (!target) throw new Error("Couldn't find a matching event to remove.");
-        await deleteEventById(parsed.id);
-        resultSummary = 'removed "' + target.title + '"';
-        showQuickStatus('Removed "' + target.title + '"', false);
+        const ids = Array.isArray(parsed.ids) ? parsed.ids : [];
+        const targets = ids.map(id => calEvents.find(e => e.id === id)).filter(Boolean);
+        if (targets.length === 0) throw new Error("Couldn't find a matching event to remove.");
+        for (const t of targets) { await deleteEventById(t.id); }
+        const label = targets.length === 1 ? '"' + targets[0].title + '"' : targets.length + ' events';
+        resultSummary = 'removed ' + label;
+        showQuickStatus('Removed ' + label, false);
       } else if (parsed.action === 'edit') {
-        const target = parsed.id && calEvents.find(e => e.id === parsed.id);
-        if (!target) throw new Error("Couldn't find a matching event to edit.");
-        const beforeTitle = target.title;
-        await editEvent(parsed.id, parsed.changes || {});
-        resultSummary = 'edited "' + beforeTitle + '" → ' + JSON.stringify(parsed.changes || {});
-        showQuickStatus('Updated "' + beforeTitle + '"', false);
+        const rawEdits = Array.isArray(parsed.edits) ? parsed.edits : [];
+        const validEdits = rawEdits.filter(e => e && e.id && calEvents.find(x => x.id === e.id));
+        if (validEdits.length === 0) throw new Error("Couldn't find a matching event to edit.");
+        const beforeTitles = validEdits.map(e => calEvents.find(x => x.id === e.id).title);
+        for (const e of validEdits) { await editEvent(e.id, e.changes || {}); }
+        const label = validEdits.length === 1 ? '"' + beforeTitles[0] + '"' : validEdits.length + ' events';
+        resultSummary = 'edited ' + label + ' → ' + JSON.stringify(validEdits.map(e => e.changes));
+        showQuickStatus('Updated ' + label, false);
       } else if (parsed.action === 'add') {
-        if (!parsed.title || !parsed.date || !CATEGORY_COLORS[parsed.category]) {
+        const dates = Array.isArray(parsed.dates) ? parsed.dates : (parsed.date ? [parsed.date] : []);
+        if (!parsed.title || dates.length === 0 || !CATEGORY_COLORS[parsed.category]) {
           throw new Error('Could not parse a valid event from that.');
         }
-        await insertEvent(parsed);
-        resultSummary = 'added "' + parsed.title + '" (' + parsed.category + ') on ' + parsed.date + (parsed.time ? ' at ' + parsed.time : '');
+        for (const d of dates) {
+          await insertEvent({ title: parsed.title, date: d, time: parsed.time, category: parsed.category });
+        }
+        const label = dates.length === 1 ? dates[0] : dates.length + ' dates';
+        resultSummary = 'added "' + parsed.title + '" (' + parsed.category + ') on ' + label + (parsed.time ? ' at ' + parsed.time : '');
+        showQuickStatus(dates.length === 1 ? 'Added "' + parsed.title + '"' : 'Added "' + parsed.title + '" × ' + dates.length, false);
       } else {
         throw new Error('Could not understand that — try rephrasing.');
       }
