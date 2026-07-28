@@ -108,13 +108,13 @@ body::after {
   width: 100%;
   padding: 13px 14px;
   border: 0; border-radius: 12px;
-  background: var(--accent);
-  color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px;
+  background: #FFFFFF;
+  color: #050506; font-family: inherit; font-weight: 700; font-size: 14px;
   cursor: pointer;
   transition: filter 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
 }
-.jr-new-btn:hover { filter: brightness(1.1); }
+.jr-new-btn:hover { filter: brightness(0.92); }
 .jr-new-btn:active { transform: scale(0.98); }
 .jr-search {
   width: 100%;
@@ -221,13 +221,15 @@ body::after {
 
 .jr-content {
   flex: 1 1 auto; width: 100%; min-height: 240px;
-  border: 0; outline: none; resize: vertical;
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 12px;
+  outline: none; resize: vertical;
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit; font-size: 15px; line-height: 1.8;
-  padding: 0;
+  padding: 16px;
+  transition: border-color 0.15s;
 }
-.jr-content::placeholder { color: var(--text-tertiary); }
+.jr-content:focus { border-color: rgba(255,255,255,0.30); }
 </style>
 </head>
 <body>
@@ -266,7 +268,7 @@ body::after {
           </div>
         </div>
 
-        <textarea class="jr-content" id="jrContent" placeholder="Write about your day..."></textarea>
+        <textarea class="jr-content" id="jrContent" placeholder=""></textarea>
       </div>
     </main>
   </div>
