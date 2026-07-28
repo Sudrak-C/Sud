@@ -494,6 +494,11 @@ body::after {
   font-size: 13px; font-weight: 600; color: #FFFFFF;
   flex: 1; min-width: 0;
 }
+.cal-drawer-item-time {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.75);
+}
 .cal-drawer-item.is-completed { opacity: 0.5; }
 .cal-drawer-item.is-completed .cal-drawer-item-label { text-decoration: line-through; }
 .cal-drawer-empty {
@@ -1690,8 +1695,29 @@ body::after {
   let calSelectedDate = todayKeyCal();
   let calDrawerOpen = true;
   let calCurrentMonth = keyToDate(todayKeyCal());
+  let calMemory = []; // short-term conversation memory, resets on page reload
 
-  function eventsForDate(dateKey) { return calEvents.filter(e => e.date === dateKey); }
+  function eventsForDate(dateKey) {
+    return calEvents.filter(e => e.date === dateKey).slice().sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+  }
+  function formatTime12h(t) {
+    if (!t) return '';
+    const parts = t.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) || 0;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    let h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + (m ? ':' + String(m).padStart(2, '0') : '') + ampm;
+  }
+  function pushMemory(userText, resultSummary) {
+    calMemory.push('User: "' + userText + '" → ' + resultSummary);
+    if (calMemory.length > 6) calMemory = calMemory.slice(-6);
+  }
 
   // ---------- data ----------
   async function loadEvents() {
@@ -1704,12 +1730,12 @@ body::after {
 
   async function insertEvent(ev) {
     const tempId = 'temp_' + Date.now();
-    calEvents.push({ id: tempId, title: ev.title, date: ev.date, category: ev.category, completed: false, created_at: new Date().toISOString() });
+    calEvents.push({ id: tempId, title: ev.title, date: ev.date, time: ev.time || null, category: ev.category, completed: false, created_at: new Date().toISOString() });
     renderAllCal();
     if (!calSupa) return;
     try {
       const { data, error } = await calSupa.from('calendar_events')
-        .insert({ title: ev.title, date: ev.date, category: ev.category, completed: false })
+        .insert({ title: ev.title, date: ev.date, time: ev.time || null, category: ev.category, completed: false })
         .select().single();
       if (!error && data) {
         const idx = calEvents.findIndex(e => e.id === tempId);
@@ -1724,6 +1750,16 @@ body::after {
     renderAllCal();
     if (!calSupa) return;
     try { await calSupa.from('calendar_events').delete().eq('id', id); } catch (e) {}
+  }
+
+  async function editEvent(id, changes) {
+    const ev = calEvents.find(e => e.id === id);
+    if (!ev) return null;
+    Object.assign(ev, changes);
+    renderAllCal();
+    if (!calSupa) return ev;
+    try { await calSupa.from('calendar_events').update(changes).eq('id', id); } catch (e) {}
+    return ev;
   }
 
   async function toggleCompleted(id, completed) {
@@ -1768,24 +1804,30 @@ body::after {
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 40)
-      .map(e => e.id + ': "' + e.title + '" on ' + e.date + ' [' + e.category + ']')
+      .map(e => e.id + ': "' + e.title + '"' + (e.time ? ' at ' + e.time : '') + ' on ' + e.date + ' [' + e.category + ']')
       .join('\n') || '(none yet)';
+    const memoryBlock = calMemory.length ? calMemory.join('\n') : '(none yet)';
     const prompt =
-      'Today is ' + today + ' (' + dow + ').\n' +
-      'Here are the user\'s current upcoming calendar events (id: "title" on date [category]):\n' +
-      existing + '\n\n' +
-      'The user typed this quick note: "' + text + '"\n\n' +
-      'Decide whether they want to ADD a new event or REMOVE an existing one from the list above.\n' +
-      '- If they\'re describing something new to schedule/remember, action = "add".\n' +
-      '- If they\'re asking to remove, delete, cancel, or clear an existing item (e.g. "remove X", "delete X", ' +
-      '"cancel X", "X is done"), action = "remove" — find the BEST MATCHING event from the list above and return its exact id.\n\n' +
-      'Category rules for "add": use "deadline" for anything with an explicit due date, submission, or deadline ' +
-      '(homework due, assignment due, project due, essay due, bill due) — even if the subject is study-related. ' +
-      'Use "study" only for general studying/reviewing with no hard due date. Use "health" for gym/workouts/' +
-      'appointments/medication. Use "opportunity" for gigs/events/interviews/social opportunities.\n\n' +
+      'Today is ' + today + ' (' + dow + ').\n\n' +
+      'Recent conversation with you (most recent last) — use this to resolve vague references like "it", "that", ' +
+      'or "the one I just added":\n' + memoryBlock + '\n\n' +
+      'Current upcoming events (id: "title" [at time] on date [category]):\n' + existing + '\n\n' +
+      'The user just typed: "' + text + '"\n\n' +
+      'Decide the action: "add" a new event, "remove" an existing one, or "edit" (reschedule/rename/recategorize) an existing one.\n' +
+      '- add: something new to schedule. Only include a "time" if the user actually states one (e.g. "at 6pm", "9am", "noon") — ' +
+      'otherwise set time to null. Never guess a time that wasn\'t mentioned.\n' +
+      '- remove: user wants to delete/cancel/clear an existing item. Match it using the event list and recent conversation above.\n' +
+      '- edit: user wants to change/move/reschedule/rename an existing item rather than delete it (e.g. "move X to Friday", ' +
+      '"push my gym to 6pm", "rename X to Y"). Match the target the same way, and only include the fields that should change.\n\n' +
+      'Category rules: use "deadline" for anything with an explicit due date, submission, or deadline (homework due, ' +
+      'assignment due, project due, essay due, bill due) — even if the subject is study-related. Use "study" only for ' +
+      'general studying/reviewing with no hard due date. Use "health" for gym/workouts/appointments/medication. Use ' +
+      '"opportunity" for gigs/events/interviews/social opportunities.\n\n' +
       'Return ONLY a JSON object, no markdown, no explanation:\n' +
-      '- For add: {"action": "add", "title": string, "date": "YYYY-MM-DD", "category": "study" | "health" | "deadline" | "opportunity"}\n' +
-      '- For remove: {"action": "remove", "id": "<exact id from the list above>"} — if no good match exists, use {"action": "remove", "id": null}';
+      '- add: {"action": "add", "title": string, "date": "YYYY-MM-DD", "time": "HH:MM" | null, "category": "study" | "health" | "deadline" | "opportunity"}\n' +
+      '- remove: {"action": "remove", "id": "<exact id from the list above>"} — if no confident match, use id: null\n' +
+      '- edit: {"action": "edit", "id": "<exact id>", "changes": {"date"?: "YYYY-MM-DD", "time"?: "HH:MM" | null, "title"?: string, "category"?: string}} ' +
+      '— if no confident match, use id: null';
     try {
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -1798,17 +1840,30 @@ body::after {
       try { parsed = JSON.parse(data.text); } catch (e) { throw new Error('Could not understand that — try rephrasing.'); }
       if (!parsed || !parsed.action) throw new Error('Could not understand that — try rephrasing.');
 
+      let resultSummary = '';
       if (parsed.action === 'remove') {
         const target = parsed.id && calEvents.find(e => e.id === parsed.id);
         if (!target) throw new Error("Couldn't find a matching event to remove.");
         await deleteEventById(parsed.id);
+        resultSummary = 'removed "' + target.title + '"';
         showQuickStatus('Removed "' + target.title + '"', false);
-      } else {
+      } else if (parsed.action === 'edit') {
+        const target = parsed.id && calEvents.find(e => e.id === parsed.id);
+        if (!target) throw new Error("Couldn't find a matching event to edit.");
+        const beforeTitle = target.title;
+        await editEvent(parsed.id, parsed.changes || {});
+        resultSummary = 'edited "' + beforeTitle + '" → ' + JSON.stringify(parsed.changes || {});
+        showQuickStatus('Updated "' + beforeTitle + '"', false);
+      } else if (parsed.action === 'add') {
         if (!parsed.title || !parsed.date || !CATEGORY_COLORS[parsed.category]) {
           throw new Error('Could not parse a valid event from that.');
         }
         await insertEvent(parsed);
+        resultSummary = 'added "' + parsed.title + '" (' + parsed.category + ') on ' + parsed.date + (parsed.time ? ' at ' + parsed.time : '');
+      } else {
+        throw new Error('Could not understand that — try rephrasing.');
       }
+      pushMemory(text, resultSummary);
       quickInput.value = '';
     } catch (e) {
       showQuickStatus((e && e.message) || 'Something went wrong.', true);
@@ -1824,7 +1879,8 @@ body::after {
     const pill = document.createElement('div');
     pill.className = 'cal-event-pill' + (ev.category === 'deadline' ? ' is-deadline-pulse' : '') + (ev.completed ? ' is-completed' : '');
     pill.style.background = CATEGORY_COLORS[ev.category] || '#666';
-    pill.textContent = (CATEGORY_ICONS[ev.category] || '') + ' ' + ev.title;
+    const timePrefix = ev.time ? formatTime12h(ev.time) + ' ' : '';
+    pill.textContent = (CATEGORY_ICONS[ev.category] || '') + ' ' + timePrefix + ev.title;
     return pill;
   }
 
@@ -1969,9 +2025,10 @@ body::after {
       const row = document.createElement('div');
       row.className = 'cal-drawer-item' + (ev.completed ? ' is-completed' : '');
       row.style.background = CATEGORY_COLORS[ev.category] + (ev.completed ? '4d' : '26');
+      const timeHtml = ev.time ? '<span class="cal-drawer-item-time">' + escapeHtmlCal(formatTime12h(ev.time)) + '</span> ' : '';
       row.innerHTML =
         '<input type="checkbox" class="cal-drawer-item-check" ' + (ev.completed ? 'checked' : '') + '>' +
-        '<span class="cal-drawer-item-label">' + (CATEGORY_ICONS[ev.category] || '') + ' ' + escapeHtmlCal(ev.title) + '</span>';
+        '<span class="cal-drawer-item-label">' + (CATEGORY_ICONS[ev.category] || '') + ' ' + timeHtml + escapeHtmlCal(ev.title) + '</span>';
       row.querySelector('.cal-drawer-item-check').addEventListener('change', (e) => {
         toggleCompleted(ev.id, e.target.checked);
       });
