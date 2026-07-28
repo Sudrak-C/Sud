@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#050506">
 <title>My Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="mood-color.js"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
 <style>
@@ -514,10 +515,12 @@ body::after {
   border: 1px solid rgba(255,255,255,0.07);
 }
 .cal-drawer-journal-label {
+  display: flex; align-items: center; gap: 6px;
   font-size: 11px; font-weight: 700;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
+.cal-drawer-journal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .cal-drawer-journal-text {
   font-size: 13px; color: var(--text-secondary);
   line-height: 1.5;
@@ -2023,9 +2026,12 @@ body::after {
       const entry = await loadJournalFor(key);
       if (calSelectedDate !== key) return;
       if (entry) {
+        const moodDot = (entry.mood_value != null && window.moodColor)
+          ? '<span class="cal-drawer-journal-dot" style="background:' + window.moodColor(entry.mood_value) + '"></span>'
+          : '';
         body.innerHTML =
           '<div class="cal-drawer-journal-card">' +
-            '<div class="cal-drawer-journal-label">📓 Journal entry</div>' +
+            '<div class="cal-drawer-journal-label">📓 Journal entry' + moodDot + '</div>' +
             '<div class="cal-drawer-journal-text">' + escapeHtmlCal(entry.content) + '</div>' +
           '</div>';
       } else {
