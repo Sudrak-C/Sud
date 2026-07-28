@@ -700,6 +700,8 @@ body::after {
 
   // Paste your Anthropic key here to enable ✨ Polish. Empty = falls back to plain add.
   const ANTHROPIC_API_KEY = '';
+  // Gemini key lives server-side now — see /api/gemini.js. Never put it here;
+  // this file is public and anyone visiting the site can read it.
 
   const WAKE_HOUR  = 8;
   const SLEEP_HOUR = 24;
