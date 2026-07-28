@@ -230,6 +230,21 @@ body::after {
   transition: border-color 0.15s;
 }
 .jr-content:focus { border-color: rgba(255,255,255,0.30); }
+
+.jr-save-row { display: flex; justify-content: flex-end; margin-top: 14px; flex-shrink: 0; }
+.jr-save-btn {
+  padding: 12px 22px;
+  border: 0; border-radius: 12px;
+  background: var(--accent);
+  color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.jr-save-btn:hover { filter: brightness(1.1); }
+.jr-save-btn:active { transform: scale(0.97); }
+.jr-save-btn:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 480px) { .jr-save-row { justify-content: stretch; } .jr-save-btn { width: 100%; } }
 </style>
 </head>
 <body>
@@ -269,6 +284,10 @@ body::after {
         </div>
 
         <textarea class="jr-content" id="jrContent" placeholder=""></textarea>
+
+        <div class="jr-save-row">
+          <button type="button" class="jr-save-btn" id="jrSaveBtn">Save Entry</button>
+        </div>
       </div>
     </main>
   </div>
@@ -292,6 +311,7 @@ body::after {
   const metaEl = $('jrMeta');
   const titleInput = $('jrTitleInput');
   const moodInput = $('jrMoodInput');
+  const saveBtn = $('jrSaveBtn');
   const contentArea = $('jrContent');
   const svgBox = $('jrMoodSvgBox');
   const arcEl = $('jrMoodArc');
@@ -496,6 +516,16 @@ body::after {
   moodInput.addEventListener('input', scheduleAutosave);
   contentArea.addEventListener('input', scheduleAutosave);
   searchInput.addEventListener('input', renderSidebarList);
+
+  saveBtn.addEventListener('click', async () => {
+    if (!currentEntry) return;
+    clearTimeout(saveTimer);
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    await commitSave();
+    saveBtn.textContent = 'Saved ✓';
+    setTimeout(() => { saveBtn.textContent = 'Save Entry'; saveBtn.disabled = false; }, 1100);
+  });
 
   async function createNewEntry() {
     const key = todayKey();
