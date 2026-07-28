@@ -1719,6 +1719,13 @@ body::after {
     } catch (e) {}
   }
 
+  async function deleteEventById(id) {
+    calEvents = calEvents.filter(e => e.id !== id);
+    renderAllCal();
+    if (!calSupa) return;
+    try { await calSupa.from('calendar_events').delete().eq('id', id); } catch (e) {}
+  }
+
   async function toggleCompleted(id, completed) {
     const ev = calEvents.find(e => e.id === id);
     if (!ev) return;
@@ -1756,12 +1763,29 @@ body::after {
     quickBtn.disabled = true;
     const today = todayKeyCal();
     const dow = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+    const existing = calEvents
+      .filter(e => !e.completed)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 40)
+      .map(e => e.id + ': "' + e.title + '" on ' + e.date + ' [' + e.category + ']')
+      .join('\n') || '(none yet)';
     const prompt =
-      'Today is ' + today + ' (' + dow + '). A user typed this quick reminder note: "' + text + '"\n' +
-      'Extract a calendar event from it. Resolve any relative dates ("tomorrow", "next Friday", etc.) relative to today.\n' +
-      'Return ONLY a JSON object with exactly these keys:\n' +
-      '{"title": string, "date": "YYYY-MM-DD", "category": one of "study" | "health" | "deadline" | "opportunity"}\n' +
-      'No markdown, no explanation, just the JSON object.';
+      'Today is ' + today + ' (' + dow + ').\n' +
+      'Here are the user\'s current upcoming calendar events (id: "title" on date [category]):\n' +
+      existing + '\n\n' +
+      'The user typed this quick note: "' + text + '"\n\n' +
+      'Decide whether they want to ADD a new event or REMOVE an existing one from the list above.\n' +
+      '- If they\'re describing something new to schedule/remember, action = "add".\n' +
+      '- If they\'re asking to remove, delete, cancel, or clear an existing item (e.g. "remove X", "delete X", ' +
+      '"cancel X", "X is done"), action = "remove" — find the BEST MATCHING event from the list above and return its exact id.\n\n' +
+      'Category rules for "add": use "deadline" for anything with an explicit due date, submission, or deadline ' +
+      '(homework due, assignment due, project due, essay due, bill due) — even if the subject is study-related. ' +
+      'Use "study" only for general studying/reviewing with no hard due date. Use "health" for gym/workouts/' +
+      'appointments/medication. Use "opportunity" for gigs/events/interviews/social opportunities.\n\n' +
+      'Return ONLY a JSON object, no markdown, no explanation:\n' +
+      '- For add: {"action": "add", "title": string, "date": "YYYY-MM-DD", "category": "study" | "health" | "deadline" | "opportunity"}\n' +
+      '- For remove: {"action": "remove", "id": "<exact id from the list above>"} — if no good match exists, use {"action": "remove", "id": null}';
     try {
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -1772,10 +1796,19 @@ body::after {
       if (!res.ok) throw new Error(data.error || 'Gemini request failed');
       let parsed;
       try { parsed = JSON.parse(data.text); } catch (e) { throw new Error('Could not understand that — try rephrasing.'); }
-      if (!parsed || !parsed.title || !parsed.date || !CATEGORY_COLORS[parsed.category]) {
-        throw new Error('Could not parse a valid event from that.');
+      if (!parsed || !parsed.action) throw new Error('Could not understand that — try rephrasing.');
+
+      if (parsed.action === 'remove') {
+        const target = parsed.id && calEvents.find(e => e.id === parsed.id);
+        if (!target) throw new Error("Couldn't find a matching event to remove.");
+        await deleteEventById(parsed.id);
+        showQuickStatus('Removed "' + target.title + '"', false);
+      } else {
+        if (!parsed.title || !parsed.date || !CATEGORY_COLORS[parsed.category]) {
+          throw new Error('Could not parse a valid event from that.');
+        }
+        await insertEvent(parsed);
       }
-      await insertEvent(parsed);
       quickInput.value = '';
     } catch (e) {
       showQuickStatus((e && e.message) || 'Something went wrong.', true);
