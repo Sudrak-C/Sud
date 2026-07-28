@@ -229,7 +229,7 @@ body::after {
 }
 .jr-content:focus { border-color: rgba(255,255,255,0.30); }
 
-.jr-save-row { display: flex; justify-content: flex-end; margin-top: 14px; flex-shrink: 0; }
+.jr-save-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-shrink: 0; gap: 10px; }
 .jr-save-btn {
   padding: 12px 22px;
   border: 0; border-radius: 12px;
@@ -242,7 +242,53 @@ body::after {
 .jr-save-btn:hover { filter: brightness(0.92); }
 .jr-save-btn:active { transform: scale(0.97); }
 .jr-save-btn:disabled { opacity: 0.5; cursor: default; }
-@media (max-width: 480px) { .jr-save-row { justify-content: stretch; } .jr-save-btn { width: 100%; } }
+.jr-delete-btn {
+  padding: 12px 8px;
+  border: 0; background: transparent;
+  color: var(--danger); font-family: inherit; font-weight: 600; font-size: 13px;
+  cursor: pointer; opacity: 0.8;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.jr-delete-btn:hover { opacity: 1; text-decoration: underline; }
+@media (max-width: 480px) {
+  .jr-save-row { flex-wrap: wrap-reverse; justify-content: stretch; }
+  .jr-save-btn { width: 100%; }
+  .jr-delete-btn { width: 100%; text-align: center; }
+}
+
+/* ----- Delete confirmation modal ----- */
+.jr-modal-bg {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  align-items: center; justify-content: center; padding: 24px;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+}
+.jr-modal-bg.show { display: flex; }
+.jr-modal {
+  width: 100%; max-width: 380px;
+  background: #0d0d0f;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+}
+.jr-modal-title { margin: 0 0 10px; font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.jr-modal-body { margin: 0 0 20px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; word-break: break-word; }
+.jr-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.jr-modal-cancel {
+  padding: 10px 16px; border-radius: 10px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-secondary); font-family: inherit; font-size: 13.5px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.jr-modal-cancel:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.jr-modal-confirm {
+  padding: 10px 16px; border-radius: 10px;
+  border: 0; background: var(--danger);
+  color: #FFFFFF; font-family: inherit; font-size: 13.5px; font-weight: 700;
+  cursor: pointer; transition: filter 0.15s;
+}
+.jr-modal-confirm:hover { filter: brightness(1.08); }
+.jr-modal-confirm:disabled { opacity: 0.6; cursor: default; }
 </style>
 </head>
 <body>
@@ -284,10 +330,22 @@ body::after {
         <textarea class="jr-content" id="jrContent" placeholder=""></textarea>
 
         <div class="jr-save-row">
+          <button type="button" class="jr-delete-btn" id="jrDeleteBtn">Delete entry</button>
           <button type="button" class="jr-save-btn" id="jrSaveBtn">Save Entry</button>
         </div>
       </div>
     </main>
+  </div>
+</div>
+
+<div class="jr-modal-bg" id="jrDeleteModalBg">
+  <div class="jr-modal">
+    <h3 class="jr-modal-title">Delete this entry?</h3>
+    <p class="jr-modal-body" id="jrDeleteModalBody">This entry will be permanently deleted. This can't be undone.</p>
+    <div class="jr-modal-actions">
+      <button type="button" class="jr-modal-cancel" id="jrDeleteCancelBtn">Cancel</button>
+      <button type="button" class="jr-modal-confirm" id="jrDeleteConfirmBtn">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -310,6 +368,11 @@ body::after {
   const titleInput = $('jrTitleInput');
   const moodInput = $('jrMoodInput');
   const saveBtn = $('jrSaveBtn');
+  const deleteBtn = $('jrDeleteBtn');
+  const deleteModalBg = $('jrDeleteModalBg');
+  const deleteModalBody = $('jrDeleteModalBody');
+  const deleteCancelBtn = $('jrDeleteCancelBtn');
+  const deleteConfirmBtn = $('jrDeleteConfirmBtn');
   const contentArea = $('jrContent');
   const svgBox = $('jrMoodSvgBox');
   const arcEl = $('jrMoodArc');
@@ -537,6 +600,38 @@ body::after {
     await commitSave();
     saveBtn.textContent = 'Saved ✓';
     setTimeout(() => { saveBtn.textContent = 'Save Entry'; saveBtn.disabled = false; }, 1100);
+  });
+
+  // ---------- delete (with confirmation) ----------
+  function openDeleteModal() {
+    if (!currentEntry) return;
+    const label = (currentEntry.title || '').trim() || formatFullDate(currentEntry.date);
+    deleteModalBody.textContent = '"' + label + '" will be permanently deleted, along with its content. This can’t be undone.';
+    deleteModalBg.classList.add('show');
+  }
+  function closeDeleteModal() { deleteModalBg.classList.remove('show'); }
+  deleteBtn.addEventListener('click', openDeleteModal);
+  deleteCancelBtn.addEventListener('click', closeDeleteModal);
+  deleteModalBg.addEventListener('click', (e) => { if (e.target === deleteModalBg) closeDeleteModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && deleteModalBg.classList.contains('show')) closeDeleteModal();
+  });
+
+  deleteConfirmBtn.addEventListener('click', async () => {
+    if (!currentEntry) { closeDeleteModal(); return; }
+    clearTimeout(saveTimer);
+    const idToDelete = currentEntry.id;
+    deleteConfirmBtn.disabled = true;
+    deleteConfirmBtn.textContent = 'Deleting…';
+    if (supa && String(idToDelete).indexOf('local_') !== 0) {
+      try { await supa.from('journal_entries').delete().eq('id', idToDelete); } catch (e) {}
+    }
+    entries = entries.filter(e => String(e.id) !== String(idToDelete));
+    deleteConfirmBtn.disabled = false;
+    deleteConfirmBtn.textContent = 'Delete';
+    closeDeleteModal();
+    if (entries.length) selectEntry(entries[0]);
+    else showEmptyState();
   });
 
   async function createNewEntry() {
