@@ -1774,13 +1774,15 @@ body::after {
     try { await calSupa.from('calendar_events').update({ completed }).eq('id', id); } catch (e) {}
   }
 
+  // A day can now hold multiple journal entries, so this always returns
+  // an array (oldest first), never a single row.
   async function loadJournalFor(dateKey) {
     if (dateKey in calJournalCache) return calJournalCache[dateKey];
-    if (!calSupa) { calJournalCache[dateKey] = null; return null; }
+    if (!calSupa) { calJournalCache[dateKey] = []; return []; }
     try {
-      const { data, error } = await calSupa.from('journal_entries').select('*').eq('date', dateKey).maybeSingle();
-      calJournalCache[dateKey] = (!error && data) ? data : null;
-    } catch (e) { calJournalCache[dateKey] = null; }
+      const { data, error } = await calSupa.from('journal_entries').select('*').eq('date', dateKey).order('created_at', { ascending: true });
+      calJournalCache[dateKey] = (!error && Array.isArray(data)) ? data : [];
+    } catch (e) { calJournalCache[dateKey] = []; }
     return calJournalCache[dateKey];
   }
 
@@ -2023,17 +2025,18 @@ body::after {
     if (key < today) {
       eyebrow.textContent = 'PAST DAY';
       body.innerHTML = '<div class="cal-drawer-empty">Loading…</div>';
-      const entry = await loadJournalFor(key);
+      const journalEntries = await loadJournalFor(key);
       if (calSelectedDate !== key) return;
-      if (entry) {
-        const moodDot = (entry.mood_value != null && window.moodColor)
-          ? '<span class="cal-drawer-journal-dot" style="background:' + window.moodColor(entry.mood_value) + '"></span>'
-          : '';
-        body.innerHTML =
-          '<div class="cal-drawer-journal-card">' +
+      if (journalEntries.length) {
+        body.innerHTML = journalEntries.map(entry => {
+          const moodDot = (entry.mood_value != null && window.moodColor)
+            ? '<span class="cal-drawer-journal-dot" style="background:' + window.moodColor(entry.mood_value) + '"></span>'
+            : '';
+          return '<div class="cal-drawer-journal-card">' +
             '<div class="cal-drawer-journal-label">📓 Journal entry' + moodDot + '</div>' +
             '<div class="cal-drawer-journal-text">' + escapeHtmlCal(entry.content) + '</div>' +
           '</div>';
+        }).join('<div style="height:8px"></div>');
       } else {
         body.innerHTML = '<div class="cal-drawer-empty">— nothing here —</div>';
       }

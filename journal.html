@@ -17,8 +17,6 @@
   --success: #6BE3A4;
   --warning: #F2C063;
   --danger: #FF6B6B;
-  --accent: #9d7cf5;
-  --accent-bg: rgba(157, 124, 245, 0.12);
   --surface-1: rgba(255,255,255,0.035);
   --surface-2: rgba(255,255,255,0.09);
   --border: rgba(255,255,255,0.07);
@@ -151,8 +149,8 @@ body::after {
 }
 .jr-entry:hover { background: rgba(255,255,255,0.055); }
 .jr-entry.is-active {
-  background: var(--accent-bg);
-  border-color: rgba(157, 124, 245, 0.5);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.35);
 }
 .jr-entry-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
 .jr-entry-body { min-width: 0; }
@@ -235,13 +233,13 @@ body::after {
 .jr-save-btn {
   padding: 12px 22px;
   border: 0; border-radius: 12px;
-  background: var(--accent);
-  color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px;
+  background: #FFFFFF;
+  color: #050506; font-family: inherit; font-weight: 700; font-size: 14px;
   cursor: pointer;
   transition: filter 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
 }
-.jr-save-btn:hover { filter: brightness(1.1); }
+.jr-save-btn:hover { filter: brightness(0.92); }
 .jr-save-btn:active { transform: scale(0.97); }
 .jr-save-btn:disabled { opacity: 0.5; cursor: default; }
 @media (max-width: 480px) { .jr-save-row { justify-content: stretch; } .jr-save-btn { width: 100%; } }
@@ -341,6 +339,9 @@ body::after {
     const d = parseDateKey(key);
     return WD_FULL[d.getDay()] + ', ' + MON_ABBR[d.getMonth()] + ' ' + d.getDate();
   }
+  function sameDayCount(entry, list) {
+    return list.reduce((n, e) => n + (e.date === entry.date ? 1 : 0), 0);
+  }
   function formatTime(ts) {
     const d = new Date(ts);
     let h = d.getHours(); const m = d.getMinutes();
@@ -422,7 +423,13 @@ body::after {
   let lastSavedTs = null;
   let saveTimer = null;
 
-  function sortEntries() { entries.sort((a, b) => b.date.localeCompare(a.date)); }
+  function sortEntries() {
+    entries.sort((a, b) => {
+      const byDate = b.date.localeCompare(a.date);
+      if (byDate !== 0) return byDate;
+      return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+    });
+  }
 
   function previewText(e) {
     const c = (e.content || '').trim().replace(/\s+/g, ' ');
@@ -444,10 +451,15 @@ body::after {
     listEl.innerHTML = filtered.map(e => {
       const isActive = currentEntry && String(e.id) === String(currentEntry.id);
       const dotColor = window.moodColor ? window.moodColor(e.mood_value == null ? 50 : e.mood_value) : '#9d5cff';
+      // Same-day entries are otherwise indistinguishable in the list, so
+      // once a day has more than one, show the time alongside the date.
+      const dateLabel = sameDayCount(e, filtered) > 1
+        ? formatShortDate(e.date) + ' · ' + formatTime(e.created_at || e.date)
+        : formatShortDate(e.date);
       return '<div class="jr-entry' + (isActive ? ' is-active' : '') + '" data-id="' + escapeHtml(e.id) + '">'
         + '<span class="jr-entry-dot" style="background:' + dotColor + '"></span>'
         + '<div class="jr-entry-body">'
-        + '<div class="jr-entry-date">' + formatShortDate(e.date) + '</div>'
+        + '<div class="jr-entry-date">' + dateLabel + '</div>'
         + '<div class="jr-entry-preview">' + escapeHtml(previewText(e)) + '</div>'
         + '</div>'
         + '</div>';
@@ -529,8 +541,6 @@ body::after {
 
   async function createNewEntry() {
     const key = todayKey();
-    const existing = entries.find(e => e.date === key);
-    if (existing) { searchInput.value = ''; selectEntry(existing); return; }
     const draft = { date: key, title: '', mood_value: 50, mood_label: '', content: '' };
     let saved = null;
     if (supa) {
@@ -551,10 +561,13 @@ body::after {
   async function loadEntries() {
     if (supa) {
       try {
-        const { data, error } = await supa.from('journal_entries').select('*').order('date', { ascending: false });
+        const { data, error } = await supa.from('journal_entries').select('*')
+          .order('date', { ascending: false }).order('created_at', { ascending: false });
         if (!error && Array.isArray(data)) entries = data;
       } catch (e) {}
     }
+    sortEntries();
+    // Pick the most recent of today's entries, if any exist yet.
     const existingToday = entries.find(e => e.date === todayKey());
     if (existingToday) selectEntry(existingToday);
     else showEmptyState();
