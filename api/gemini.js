@@ -5,9 +5,15 @@
 //   fetch('/api/gemini', {
 //     method: 'POST',
 //     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({ prompt: 'your prompt here' })
+//     body: JSON.stringify({
+//       prompt: 'your prompt here',
+//       model: 'gemini-2.0-flash',   // optional, defaults below
+//       json: false                  // optional — true forces JSON-only output
+//     })
 //   })
 // Response: { text: '...' } on success, { error: '...' } on failure.
+
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -21,21 +27,28 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const prompt = req.body && req.body.prompt;
+  const body = req.body || {};
+  const prompt = body.prompt;
   if (!prompt || typeof prompt !== 'string') {
     res.status(400).json({ error: 'Missing "prompt" string in request body' });
     return;
   }
+  const model = (typeof body.model === 'string' && body.model.trim()) || DEFAULT_MODEL;
+
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }]
+  };
+  if (body.json) {
+    requestBody.generationConfig = { responseMimeType: 'application/json' };
+  }
 
   try {
     const geminiRes = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey,
+      'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
+        body: JSON.stringify(requestBody)
       }
     );
     const data = await geminiRes.json();

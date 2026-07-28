@@ -239,6 +239,299 @@ body::after {
   .day-ring-status { font-size: 13px; }
 }
 
+/* ===== Calendar ===== */
+:root {
+  --cal-study: #eb6834;
+  --cal-health: #1baf7a;
+  --cal-deadline: #e5484d;
+  --cal-opportunity: #eda100;
+}
+.cal-section { margin-bottom: 22px; }
+.cal-subtitle {
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+/* quick-add */
+.cal-quickadd-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 4px 4px 14px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.cal-quickadd-icon { color: var(--text-tertiary); font-size: 14px; flex-shrink: 0; }
+.cal-quickadd-input {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; outline: none;
+  padding: 12px 0;
+  color: var(--text-primary);
+  font-family: inherit; font-size: 14px;
+}
+.cal-quickadd-input::placeholder { color: var(--text-tertiary); }
+.cal-quickadd-btn {
+  flex-shrink: 0;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cal-quickadd-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+.cal-quickadd-btn:disabled { opacity: 0.5; cursor: default; }
+.cal-quickadd-status {
+  font-size: 11px; color: var(--text-tertiary);
+  margin: -12px 0 16px 4px;
+  min-height: 14px;
+}
+.cal-quickadd-status.is-error { color: var(--cal-deadline); }
+
+/* layout: calendar + drawer */
+.cal-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+  transition: grid-template-columns 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cal-layout.cal-drawer-closed { grid-template-columns: 1fr 0px; }
+@media (max-width: 760px) {
+  .cal-layout, .cal-layout.cal-drawer-closed { grid-template-columns: 1fr; }
+}
+
+/* week strip */
+.cal-week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 22px;
+}
+.cal-week-day {
+  min-height: 92px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.cal-week-day:hover { background: rgba(255,255,255,0.06); }
+.cal-week-day.is-today {
+  border-color: var(--cal-study);
+  background: rgba(235, 104, 52, 0.08);
+}
+.cal-week-day.is-selected { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35); }
+.cal-week-day-name {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.cal-week-day.is-today .cal-week-day-name { color: var(--cal-study); }
+.cal-week-day-num {
+  font-family: var(--font-mono);
+  font-size: 13px; font-weight: 700;
+  color: var(--text-secondary);
+}
+.cal-week-day.is-today .cal-week-day-num { color: var(--text-primary); }
+.cal-week-day-events { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+.cal-event-pill {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 6px;
+  border-radius: 7px;
+  font-size: 10px; font-weight: 600;
+  color: #FFFFFF;
+  line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-event-pill.is-completed { opacity: 0.45; text-decoration: line-through; }
+@keyframes cal-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.55); }
+  50%      { box-shadow: 0 0 9px 2px rgba(229, 72, 77, 0.45); }
+}
+.cal-event-pill.is-deadline-pulse { animation: cal-pulse 1.8s ease-in-out infinite; }
+@media (max-width: 480px) {
+  .cal-week-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal-week-day { min-height: 70px; padding: 6px 4px; }
+  .cal-week-day-name { font-size: 8.5px; }
+  .cal-event-pill { font-size: 0; padding: 5px; justify-content: center; }
+}
+
+/* month view */
+.cal-month-section { margin-bottom: 18px; }
+.cal-month-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cal-month-nav { display: flex; align-items: center; gap: 10px; }
+.cal-nav-btn {
+  border: 0; background: transparent;
+  color: var(--text-tertiary);
+  font-size: 16px; line-height: 1;
+  cursor: pointer; padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.cal-nav-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.cal-month-label {
+  font-size: 13px; font-weight: 700;
+  color: var(--text-primary);
+  min-width: 108px; text-align: center;
+}
+.cal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cal-month-weekday-header {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding-bottom: 4px;
+}
+.cal-month-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 44px;
+  padding: 5px;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.cal-month-cell:hover { background: rgba(255,255,255,0.06); }
+.cal-month-cell.is-faded { opacity: 0.32; }
+.cal-month-cell.is-today {
+  border-color: var(--cal-study);
+  background: rgba(235, 104, 52, 0.08);
+}
+.cal-month-cell.is-selected { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35); }
+.cal-month-cell-num {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700;
+  color: var(--text-secondary);
+}
+.cal-month-cell.is-today .cal-month-cell-num { color: var(--cal-study); }
+.cal-month-cell-dots { display: flex; gap: 3px; flex-wrap: wrap; }
+.cal-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.cal-dot.is-deadline-pulse { animation: cal-pulse 1.8s ease-in-out infinite; }
+@media (max-width: 480px) {
+  .cal-month-cell { min-height: 34px; padding: 3px; }
+  .cal-month-cell-num { font-size: 9.5px; }
+}
+
+/* drawer */
+.cal-drawer {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(235, 104, 52, 0.35);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.3s ease-out, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cal-layout.cal-drawer-closed .cal-drawer {
+  opacity: 0;
+  transform: translateX(24px);
+  pointer-events: none;
+}
+.cal-drawer-inner { padding: 18px; }
+.cal-drawer-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.cal-drawer-eyebrow {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--cal-study);
+  margin-bottom: 4px;
+}
+.cal-drawer-date { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.cal-drawer-close {
+  border: 0; background: transparent;
+  color: var(--text-tertiary);
+  font-size: 18px; line-height: 1;
+  cursor: pointer; padding: 2px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.cal-drawer-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.cal-drawer-list { display: flex; flex-direction: column; gap: 8px; }
+.cal-drawer-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px;
+  border-radius: 11px;
+}
+.cal-drawer-item-check {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; flex-shrink: 0;
+  margin: 0;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  border-radius: 5px;
+  background: rgba(0,0,0,0.2);
+  cursor: pointer;
+  position: relative;
+}
+.cal-drawer-item-check:checked { background: #FFFFFF; border-color: #FFFFFF; }
+.cal-drawer-item-check:checked::after {
+  content: '';
+  position: absolute; left: 5px; top: 1px;
+  width: 5px; height: 9px;
+  border: solid #0A0A0B;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.cal-drawer-item-label {
+  font-size: 13px; font-weight: 600; color: #FFFFFF;
+  flex: 1; min-width: 0;
+}
+.cal-drawer-item.is-completed { opacity: 0.5; }
+.cal-drawer-item.is-completed .cal-drawer-item-label { text-decoration: line-through; }
+.cal-drawer-empty {
+  text-align: center;
+  padding: 30px 10px;
+  font-size: 12px; font-style: italic;
+  color: var(--text-tertiary);
+}
+.cal-drawer-journal-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.cal-drawer-journal-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.cal-drawer-journal-text {
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* legend */
+.cal-legend {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.cal-legend-item { display: flex; align-items: center; gap: 6px; }
+.cal-legend-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cal-legend-label {
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
 /* ===== Component 4: section + To Do List ===== */
 .section { margin-top: 8px; }
 .section-title {
@@ -637,6 +930,51 @@ body::after {
       <div class="day-ring-status"    id="dayRingStatus">Loading…</div>
       <div class="day-ring-remaining" id="dayRingRemaining">—</div>
       <div class="day-ring-hours">8:00 AM – 12:00 AM</div>
+    </div>
+  </div>
+
+  <div class="cal-section">
+    <div class="cal-quickadd-row">
+      <span class="cal-quickadd-icon">✦</span>
+      <input id="calQuickAdd" class="cal-quickadd-input" type="text" placeholder="hey add reminder for tomorrow…" autocomplete="off">
+      <button type="button" id="calQuickAddBtn" class="cal-quickadd-btn" aria-label="Add reminder">↵</button>
+    </div>
+    <div class="cal-quickadd-status" id="calQuickAddStatus"></div>
+
+    <div class="cal-layout" id="calLayout">
+      <div class="cal-main">
+        <div class="cal-week-section">
+          <div class="cal-subtitle">This Week</div>
+          <div class="cal-week-strip" id="calWeekStrip"></div>
+        </div>
+
+        <div class="cal-month-section">
+          <div class="cal-month-header">
+            <div class="cal-subtitle" style="margin-bottom:0;">Full Month</div>
+            <div class="cal-month-nav">
+              <button type="button" id="calPrevMonth" class="cal-nav-btn" aria-label="Previous month">‹</button>
+              <span id="calMonthLabel" class="cal-month-label">—</span>
+              <button type="button" id="calNextMonth" class="cal-nav-btn" aria-label="Next month">›</button>
+            </div>
+          </div>
+          <div class="cal-month-grid" id="calMonthGrid"></div>
+        </div>
+
+        <div class="cal-legend" id="calLegend"></div>
+      </div>
+
+      <div class="cal-drawer" id="calDrawer">
+        <div class="cal-drawer-inner">
+          <div class="cal-drawer-top">
+            <div>
+              <div class="cal-drawer-eyebrow" id="calDrawerEyebrow">—</div>
+              <div class="cal-drawer-date" id="calDrawerDate">—</div>
+            </div>
+            <button type="button" class="cal-drawer-close" id="calDrawerClose" aria-label="Close">×</button>
+          </div>
+          <div id="calDrawerBody"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1308,6 +1646,327 @@ body::after {
   window.addEventListener('storage', () => {
     loadToday(); loadTomorrow(); renderStreak();
   });
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+
+  const SUPABASE_URL = 'https://cqmxyigyniidswevlrqi.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_89VDKjMuiEUvG3Wt4aIVxg_qJExBhEH';
+  let calSupa = null;
+  try {
+    if (window.supabase) calSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch (e) {}
+
+  const CATEGORY_COLORS = { study: '#eb6834', health: '#1baf7a', deadline: '#e5484d', opportunity: '#eda100' };
+  const CATEGORY_ICONS  = { study: '📐', health: '💪', deadline: '⏰', opportunity: '🎯' };
+  const CATEGORY_LABELS = { study: 'Study', health: 'Health', deadline: 'Deadline', opportunity: 'Opportunity' };
+  const WEEKDAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function dateToKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function keyToDate(key) {
+    const parts = key.split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  function todayKeyCal() { return dateToKey(new Date()); }
+  // Monday-start day-of-week index: 0=Mon .. 6=Sun
+  function mondayIndex(d) { return (d.getDay() + 6) % 7; }
+  function formatDrawerDate(key) {
+    const d = keyToDate(key);
+    const wk = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+    const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    return wk + ', ' + mo + ' ' + d.getDate();
+  }
+  function escapeHtmlCal(str) {
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  let calEvents = [];
+  let calJournalCache = {};
+  let calSelectedDate = todayKeyCal();
+  let calDrawerOpen = true;
+  let calCurrentMonth = keyToDate(todayKeyCal());
+
+  function eventsForDate(dateKey) { return calEvents.filter(e => e.date === dateKey); }
+
+  // ---------- data ----------
+  async function loadEvents() {
+    if (!calSupa) return;
+    try {
+      const { data, error } = await calSupa.from('calendar_events').select('*').order('created_at', { ascending: true });
+      if (!error && Array.isArray(data)) { calEvents = data; renderAllCal(); }
+    } catch (e) {}
+  }
+
+  async function insertEvent(ev) {
+    const tempId = 'temp_' + Date.now();
+    calEvents.push({ id: tempId, title: ev.title, date: ev.date, category: ev.category, completed: false, created_at: new Date().toISOString() });
+    renderAllCal();
+    if (!calSupa) return;
+    try {
+      const { data, error } = await calSupa.from('calendar_events')
+        .insert({ title: ev.title, date: ev.date, category: ev.category, completed: false })
+        .select().single();
+      if (!error && data) {
+        const idx = calEvents.findIndex(e => e.id === tempId);
+        if (idx !== -1) calEvents[idx] = data;
+        renderAllCal();
+      }
+    } catch (e) {}
+  }
+
+  async function toggleCompleted(id, completed) {
+    const ev = calEvents.find(e => e.id === id);
+    if (!ev) return;
+    ev.completed = completed;
+    renderAllCal();
+    if (!calSupa) return;
+    try { await calSupa.from('calendar_events').update({ completed }).eq('id', id); } catch (e) {}
+  }
+
+  async function loadJournalFor(dateKey) {
+    if (dateKey in calJournalCache) return calJournalCache[dateKey];
+    if (!calSupa) { calJournalCache[dateKey] = null; return null; }
+    try {
+      const { data, error } = await calSupa.from('journal_entries').select('*').eq('date', dateKey).maybeSingle();
+      calJournalCache[dateKey] = (!error && data) ? data : null;
+    } catch (e) { calJournalCache[dateKey] = null; }
+    return calJournalCache[dateKey];
+  }
+
+  // ---------- quick add ----------
+  const quickInput = document.getElementById('calQuickAdd');
+  const quickBtn = document.getElementById('calQuickAddBtn');
+  const quickStatus = document.getElementById('calQuickAddStatus');
+
+  function showQuickStatus(msg, isError) {
+    quickStatus.textContent = msg;
+    quickStatus.classList.toggle('is-error', !!isError);
+    clearTimeout(quickStatus._t);
+    quickStatus._t = setTimeout(() => { quickStatus.textContent = ''; quickStatus.classList.remove('is-error'); }, 4000);
+  }
+
+  async function submitQuickAdd() {
+    const text = quickInput.value.trim();
+    if (!text) return;
+    quickBtn.disabled = true;
+    const today = todayKeyCal();
+    const dow = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+    const prompt =
+      'Today is ' + today + ' (' + dow + '). A user typed this quick reminder note: "' + text + '"\n' +
+      'Extract a calendar event from it. Resolve any relative dates ("tomorrow", "next Friday", etc.) relative to today.\n' +
+      'Return ONLY a JSON object with exactly these keys:\n' +
+      '{"title": string, "date": "YYYY-MM-DD", "category": one of "study" | "health" | "deadline" | "opportunity"}\n' +
+      'No markdown, no explanation, just the JSON object.';
+    try {
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt, model: 'gemini-2.5-flash-lite', json: true })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gemini request failed');
+      let parsed;
+      try { parsed = JSON.parse(data.text); } catch (e) { throw new Error('Could not understand that — try rephrasing.'); }
+      if (!parsed || !parsed.title || !parsed.date || !CATEGORY_COLORS[parsed.category]) {
+        throw new Error('Could not parse a valid event from that.');
+      }
+      await insertEvent(parsed);
+      quickInput.value = '';
+    } catch (e) {
+      showQuickStatus((e && e.message) || 'Something went wrong.', true);
+    } finally {
+      quickBtn.disabled = false;
+    }
+  }
+  quickBtn.addEventListener('click', submitQuickAdd);
+  quickInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitQuickAdd(); });
+
+  // ---------- week strip ----------
+  function buildEventPill(ev) {
+    const pill = document.createElement('div');
+    pill.className = 'cal-event-pill' + (ev.category === 'deadline' ? ' is-deadline-pulse' : '') + (ev.completed ? ' is-completed' : '');
+    pill.style.background = CATEGORY_COLORS[ev.category] || '#666';
+    pill.textContent = (CATEGORY_ICONS[ev.category] || '') + ' ' + ev.title;
+    return pill;
+  }
+
+  function renderWeekStrip() {
+    const strip = document.getElementById('calWeekStrip');
+    strip.innerHTML = '';
+    const today = todayKeyCal();
+    const todayD = keyToDate(today);
+    const mondayD = new Date(todayD);
+    mondayD.setDate(todayD.getDate() - mondayIndex(todayD));
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mondayD);
+      d.setDate(mondayD.getDate() + i);
+      const key = dateToKey(d);
+      const isToday = key === today;
+      const dayEl = document.createElement('div');
+      dayEl.className = 'cal-week-day' + (isToday ? ' is-today' : '') + (key === calSelectedDate ? ' is-selected' : '');
+      dayEl.innerHTML =
+        '<div class="cal-week-day-name">' + WEEKDAY_NAMES[i] + (isToday ? ' · TODAY' : '') + '</div>' +
+        '<div class="cal-week-day-num">' + d.getDate() + '</div>' +
+        '<div class="cal-week-day-events"></div>';
+      const evWrap = dayEl.querySelector('.cal-week-day-events');
+      eventsForDate(key).forEach(ev => evWrap.appendChild(buildEventPill(ev)));
+      dayEl.addEventListener('click', () => selectDate(key));
+      strip.appendChild(dayEl);
+    }
+  }
+
+  // ---------- month view ----------
+  function renderMonth() {
+    document.getElementById('calMonthLabel').textContent =
+      MONTH_NAMES[calCurrentMonth.getMonth()] + ' ' + calCurrentMonth.getFullYear();
+
+    const grid = document.getElementById('calMonthGrid');
+    grid.innerHTML = '';
+    WEEKDAY_NAMES.forEach(n => {
+      const h = document.createElement('div');
+      h.className = 'cal-month-weekday-header';
+      h.textContent = n[0];
+      grid.appendChild(h);
+    });
+
+    const firstOfMonth = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth(), 1);
+    const startOffset = mondayIndex(firstOfMonth);
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(firstOfMonth.getDate() - startOffset);
+
+    const daysInMonth = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 0).getDate();
+    const rows = (startOffset + daysInMonth) > 35 ? 6 : 5;
+    const totalCells = rows * 7;
+
+    const today = todayKeyCal();
+    for (let i = 0; i < totalCells; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const key = dateToKey(d);
+      const inMonth = d.getMonth() === calCurrentMonth.getMonth();
+      const isToday = key === today;
+      const cell = document.createElement('div');
+      cell.className = 'cal-month-cell' +
+        (inMonth ? '' : ' is-faded') +
+        (isToday ? ' is-today' : '') +
+        (key === calSelectedDate ? ' is-selected' : '');
+      const cats = Array.from(new Set(eventsForDate(key).map(e => e.category)));
+      cell.innerHTML =
+        '<div class="cal-month-cell-num">' + d.getDate() + '</div>' +
+        '<div class="cal-month-cell-dots">' +
+          cats.map(c => '<span class="cal-dot' + (c === 'deadline' ? ' is-deadline-pulse' : '') + '" style="background:' + CATEGORY_COLORS[c] + '"></span>').join('') +
+        '</div>';
+      cell.addEventListener('click', () => selectDate(key));
+      grid.appendChild(cell);
+    }
+  }
+
+  document.getElementById('calPrevMonth').addEventListener('click', () => {
+    calCurrentMonth = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() - 1, 1);
+    renderMonth();
+  });
+  document.getElementById('calNextMonth').addEventListener('click', () => {
+    calCurrentMonth = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth() + 1, 1);
+    renderMonth();
+  });
+
+  // ---------- drawer ----------
+  const calLayout = document.getElementById('calLayout');
+
+  function openDrawer() { calDrawerOpen = true; calLayout.classList.remove('cal-drawer-closed'); }
+  function closeDrawer() { calDrawerOpen = false; calLayout.classList.add('cal-drawer-closed'); }
+
+  document.getElementById('calDrawerClose').addEventListener('click', closeDrawer);
+  document.addEventListener('click', (e) => {
+    if (!calDrawerOpen) return;
+    const drawer = document.getElementById('calDrawer');
+    if (drawer.contains(e.target)) return;
+    if (e.target.closest('.cal-week-day') || e.target.closest('.cal-month-cell')) return;
+    if (!e.target.closest('.cal-section')) return; // only care about clicks inside the calendar area or truly outside the page content
+    closeDrawer();
+  });
+
+  function selectDate(key) {
+    calSelectedDate = key;
+    openDrawer();
+    renderDrawer();
+    renderWeekStrip();
+    renderMonth();
+  }
+
+  async function renderDrawer() {
+    const key = calSelectedDate;
+    const today = todayKeyCal();
+    const eyebrow = document.getElementById('calDrawerEyebrow');
+    const dateEl = document.getElementById('calDrawerDate');
+    const body = document.getElementById('calDrawerBody');
+    dateEl.textContent = formatDrawerDate(key);
+
+    if (key < today) {
+      eyebrow.textContent = 'PAST DAY';
+      body.innerHTML = '<div class="cal-drawer-empty">Loading…</div>';
+      const entry = await loadJournalFor(key);
+      if (calSelectedDate !== key) return;
+      if (entry) {
+        body.innerHTML =
+          '<div class="cal-drawer-journal-card">' +
+            '<div class="cal-drawer-journal-label">📓 Journal entry</div>' +
+            '<div class="cal-drawer-journal-text">' + escapeHtmlCal(entry.content) + '</div>' +
+          '</div>';
+      } else {
+        body.innerHTML = '<div class="cal-drawer-empty">— nothing here —</div>';
+      }
+      return;
+    }
+
+    eyebrow.textContent = key === today ? 'TODAY' : 'UPCOMING';
+    const evs = eventsForDate(key);
+    if (evs.length === 0) {
+      body.innerHTML = '<div class="cal-drawer-empty">Nothing scheduled</div>';
+      return;
+    }
+    body.innerHTML = '<div class="cal-drawer-list"></div>';
+    const list = body.querySelector('.cal-drawer-list');
+    evs.forEach(ev => {
+      const row = document.createElement('div');
+      row.className = 'cal-drawer-item' + (ev.completed ? ' is-completed' : '');
+      row.style.background = CATEGORY_COLORS[ev.category] + (ev.completed ? '4d' : '26');
+      row.innerHTML =
+        '<input type="checkbox" class="cal-drawer-item-check" ' + (ev.completed ? 'checked' : '') + '>' +
+        '<span class="cal-drawer-item-label">' + (CATEGORY_ICONS[ev.category] || '') + ' ' + escapeHtmlCal(ev.title) + '</span>';
+      row.querySelector('.cal-drawer-item-check').addEventListener('change', (e) => {
+        toggleCompleted(ev.id, e.target.checked);
+      });
+      list.appendChild(row);
+    });
+  }
+
+  // ---------- legend ----------
+  function renderLegend() {
+    document.getElementById('calLegend').innerHTML = Object.keys(CATEGORY_COLORS).map(cat =>
+      '<div class="cal-legend-item">' +
+        '<span class="cal-legend-swatch" style="background:' + CATEGORY_COLORS[cat] + '"></span>' +
+        '<span class="cal-legend-label">' + CATEGORY_LABELS[cat] + '</span>' +
+      '</div>'
+    ).join('');
+  }
+
+  function renderAllCal() {
+    renderWeekStrip();
+    renderMonth();
+    renderDrawer();
+  }
+
+  // ---------- boot ----------
+  renderLegend();
+  renderWeekStrip();
+  renderMonth();
+  renderDrawer();
+  loadEvents();
 })();
 </script>
 <script>
