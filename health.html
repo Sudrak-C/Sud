@@ -524,15 +524,51 @@ body::after {
   border-color: rgba(255,255,255,0.24);
   color: var(--text-primary);
 }
-.sd-reschedule-input {
-  border: 1px solid rgba(255,255,255,0.18);
+.sd-reschedule-panel {
+  width: 100%;
+  margin-top: 8px; padding: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+}
+.sd-reschedule-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.sd-reschedule-chip {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-secondary);
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sd-reschedule-chip:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.26);
+  color: var(--text-primary);
+}
+.sd-reschedule-custom { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-tertiary); }
+.sd-reschedule-days-input {
+  width: 52px;
+  border: 1px solid rgba(255,255,255,0.14);
   border-radius: 6px;
   background: rgba(0,0,0,0.3);
   color: var(--text-primary);
-  font-family: inherit; font-size: 11px;
-  padding: 3px 6px;
-  color-scheme: dark;
+  font-family: inherit; font-size: 12px;
+  padding: 4px 6px;
+  text-align: center;
 }
+.sd-reschedule-set-btn {
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-family: inherit; font-size: 11px; font-weight: 700;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sd-reschedule-set-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 
 /* ===== Revision schedule ===== */
 .sd-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
@@ -1251,8 +1287,22 @@ body::after {
         '<div class="sd-topic-dates">Last reviewed: ' + formatDate(t.lastReviewed) + '</div>' +
         '<div class="sd-topic-dates-row">' +
           '<span class="sd-topic-dates ' + dateClass + '">Next review: ' + formatDate(t.nextReview) + '</span>' +
-          '<button type="button" class="sd-reschedule-btn">📅 Schedule</button>' +
-          '<input type="date" class="sd-reschedule-input" value="' + t.nextReview + '" style="display:none;">' +
+          '<button type="button" class="sd-reschedule-btn">⏰ Remind me</button>' +
+        '</div>' +
+        '<div class="sd-reschedule-panel" style="display:none;">' +
+          '<div class="sd-reschedule-chips">' +
+            '<button type="button" class="sd-reschedule-chip" data-days="1">Tomorrow</button>' +
+            '<button type="button" class="sd-reschedule-chip" data-days="3">In 3 days</button>' +
+            '<button type="button" class="sd-reschedule-chip" data-days="7">In 1 week</button>' +
+            '<button type="button" class="sd-reschedule-chip" data-days="14">In 2 weeks</button>' +
+            '<button type="button" class="sd-reschedule-chip" data-days="30">In 1 month</button>' +
+          '</div>' +
+          '<div class="sd-reschedule-custom">' +
+            '<span>In</span>' +
+            '<input type="number" min="1" step="1" class="sd-reschedule-days-input" placeholder="3">' +
+            '<span>days</span>' +
+            '<button type="button" class="sd-reschedule-set-btn">Set</button>' +
+          '</div>' +
         '</div>' +
         '<div class="sd-topic-notes">' +
           '<div class="sd-topic-desc-text">' + (t.description ? escapeHtml(t.description) : '<em>No description added — tap to add one.</em>') + '</div>' +
@@ -1285,21 +1335,28 @@ body::after {
         startDescEdit(descEl, card, t.id);
       });
       const rescheduleBtn = card.querySelector('.sd-reschedule-btn');
-      const rescheduleInput = card.querySelector('.sd-reschedule-input');
+      const reschedulePanel = card.querySelector('.sd-reschedule-panel');
+      const rescheduleDaysInput = card.querySelector('.sd-reschedule-days-input');
+      const rescheduleSetBtn = card.querySelector('.sd-reschedule-set-btn');
+      function applyRescheduleDays(days) {
+        const n = parseInt(days, 10);
+        if (!n || n < 1) return;
+        rescheduleTopic(t.id, addDays(todayKey(), n));
+      }
       rescheduleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         card.classList.add('sd-expanded');
-        const showing = rescheduleInput.style.display !== 'none';
-        rescheduleInput.style.display = showing ? 'none' : 'inline-block';
-        if (!showing) {
-          rescheduleInput.focus();
-          if (rescheduleInput.showPicker) { try { rescheduleInput.showPicker(); } catch (err) {} }
-        }
+        const showing = reschedulePanel.style.display !== 'none';
+        reschedulePanel.style.display = showing ? 'none' : 'block';
+        if (!showing) rescheduleDaysInput.focus();
       });
-      rescheduleInput.addEventListener('click', (e) => e.stopPropagation());
-      rescheduleInput.addEventListener('change', (e) => {
-        e.stopPropagation();
-        rescheduleTopic(t.id, rescheduleInput.value);
+      reschedulePanel.addEventListener('click', (e) => e.stopPropagation());
+      reschedulePanel.querySelectorAll('.sd-reschedule-chip').forEach(chip => {
+        chip.addEventListener('click', () => applyRescheduleDays(chip.dataset.days));
+      });
+      rescheduleSetBtn.addEventListener('click', () => applyRescheduleDays(rescheduleDaysInput.value));
+      rescheduleDaysInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); applyRescheduleDays(rescheduleDaysInput.value); }
       });
       card.addEventListener('click', () => card.classList.toggle('sd-expanded'));
       gridEl.appendChild(card);
