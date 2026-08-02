@@ -498,10 +498,41 @@ body::after {
   margin-top: 10px; padding-top: 10px;
   border-top: 1px solid rgba(255,255,255,0.06);
   font-size: 13px; color: var(--text-secondary);
-  white-space: pre-wrap;
 }
 .sd-topic-card.sd-expanded .sd-topic-notes { display: block; }
+.sd-topic-desc-text { cursor: text; white-space: pre-wrap; }
+.sd-topic-desc-text[contenteditable="true"] {
+  outline: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.28);
+  border-radius: 4px;
+  padding: 4px;
+}
 .sd-topic-source { margin-top: 6px; font-size: 11px; color: var(--text-tertiary); }
+.sd-topic-dates-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sd-reschedule-btn {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-tertiary);
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sd-reschedule-btn:hover {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.24);
+  color: var(--text-primary);
+}
+.sd-reschedule-input {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+  color: var(--text-primary);
+  font-family: inherit; font-size: 11px;
+  padding: 3px 6px;
+  color-scheme: dark;
+}
 
 /* ===== Revision schedule ===== */
 .sd-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
@@ -959,6 +990,28 @@ body::after {
     renderAll();
   }
 
+  // ---------- reschedule next review to any date, any time ----------
+  // Deliberately does NOT touch lastReviewed/reviewCount/history — this is
+  // just moving the reminder, not logging that a review happened.
+  function rescheduleTopic(id, newDateKey) {
+    if (!newDateKey) return;
+    const topics = getTopics();
+    const t = topics.find(x => x.id === id);
+    if (!t) return;
+    t.nextReview = newDateKey;
+    saveTopics(topics);
+    renderAll();
+  }
+
+  // ---------- edit description ----------
+  function updateDescription(id, newText) {
+    const topics = getTopics();
+    const t = topics.find(x => x.id === id);
+    if (!t) return;
+    t.description = newText;
+    saveTopics(topics);
+  }
+
   // ---------- stats ----------
   function renderStats() {
     const topics = getTopics();
@@ -1196,8 +1249,13 @@ body::after {
         '</div>' +
         confBarHtml(t.confidence) +
         '<div class="sd-topic-dates">Last reviewed: ' + formatDate(t.lastReviewed) + '</div>' +
-        '<div class="sd-topic-dates ' + dateClass + '">Next review: ' + formatDate(t.nextReview) + '</div>' +
-        '<div class="sd-topic-notes">' + (t.description ? escapeHtml(t.description) : '<em>No description added.</em>') +
+        '<div class="sd-topic-dates-row">' +
+          '<span class="sd-topic-dates ' + dateClass + '">Next review: ' + formatDate(t.nextReview) + '</span>' +
+          '<button type="button" class="sd-reschedule-btn">📅 Schedule</button>' +
+          '<input type="date" class="sd-reschedule-input" value="' + t.nextReview + '" style="display:none;">' +
+        '</div>' +
+        '<div class="sd-topic-notes">' +
+          '<div class="sd-topic-desc-text">' + (t.description ? escapeHtml(t.description) : '<em>No description added — tap to add one.</em>') + '</div>' +
           (t.source ? '<div class="sd-topic-source">Source: ' + escapeHtml(t.source) + '</div>' : '') +
           '<div class="sd-topic-source">Logged: ' + formatDate(t.loggedAt) + ' · Reviewed ' + (t.reviewCount || 0) + ' time' + ((t.reviewCount || 0) === 1 ? '' : 's') + '</div>' +
         '</div>';
@@ -1219,6 +1277,29 @@ body::after {
         e.stopPropagation();
         if (titleEl.getAttribute('contenteditable') === 'true') return;
         startTitleEdit(titleEl, card, t.id);
+      });
+      const descEl = card.querySelector('.sd-topic-desc-text');
+      descEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (descEl.getAttribute('contenteditable') === 'true') return;
+        startDescEdit(descEl, card, t.id);
+      });
+      const rescheduleBtn = card.querySelector('.sd-reschedule-btn');
+      const rescheduleInput = card.querySelector('.sd-reschedule-input');
+      rescheduleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        card.classList.add('sd-expanded');
+        const showing = rescheduleInput.style.display !== 'none';
+        rescheduleInput.style.display = showing ? 'none' : 'inline-block';
+        if (!showing) {
+          rescheduleInput.focus();
+          if (rescheduleInput.showPicker) { try { rescheduleInput.showPicker(); } catch (err) {} }
+        }
+      });
+      rescheduleInput.addEventListener('click', (e) => e.stopPropagation());
+      rescheduleInput.addEventListener('change', (e) => {
+        e.stopPropagation();
+        rescheduleTopic(t.id, rescheduleInput.value);
       });
       card.addEventListener('click', () => card.classList.toggle('sd-expanded'));
       gridEl.appendChild(card);
@@ -1248,13 +1329,52 @@ body::after {
       renderAll();
     }
     function cancel() {
-      titleEl.removeAttribute('contenteditable');
+      // Revert the text BEFORE removing contenteditable: removing it from a
+      // focused element fires a synchronous blur (→ commit()) mid-call, so
+      // reverting first is what makes that resulting commit() a no-op.
       titleEl.textContent = original;
+      titleEl.removeAttribute('contenteditable');
     }
     titleEl.addEventListener('blur', commit, { once: true });
     titleEl.addEventListener('keydown', function onKey(e) {
       if (e.key === 'Enter') { e.preventDefault(); titleEl.removeEventListener('keydown', onKey); titleEl.blur(); }
       else if (e.key === 'Escape') { e.preventDefault(); titleEl.removeEventListener('keydown', onKey); cancel(); }
+    });
+  }
+
+  // Multi-line, so unlike the title, Enter inserts a newline instead of
+  // committing — clicking away (blur) or Escape are what end the edit.
+  function startDescEdit(descEl, card, topicId) {
+    card.classList.add('sd-expanded');
+    const topics = getTopics();
+    const t = topics.find(x => x.id === topicId);
+    const original = (t && t.description) || '';
+    descEl.setAttribute('contenteditable', 'true');
+    descEl.textContent = original;
+    descEl.focus();
+    const range = document.createRange();
+    range.selectNodeContents(descEl);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    function commit() {
+      descEl.removeAttribute('contenteditable');
+      const next = descEl.textContent.trim();
+      if (next !== original) updateDescription(topicId, next);
+      renderAll();
+    }
+    function cancel() {
+      // Revert the text BEFORE removing contenteditable: removing it from a
+      // focused element fires a synchronous blur (→ commit()) mid-call, so
+      // reverting first is what makes that resulting commit() a no-op.
+      descEl.textContent = original;
+      descEl.removeAttribute('contenteditable');
+    }
+    descEl.addEventListener('blur', commit, { once: true });
+    descEl.addEventListener('keydown', function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); descEl.removeEventListener('keydown', onKey); cancel(); }
     });
   }
   searchInput.addEventListener('input', renderMyTopics);
